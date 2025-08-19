@@ -87,7 +87,7 @@ const Journal = () => {
                         <img 
                           src="/lovable-uploads/0b1d45f0-c3dd-413d-89aa-6d7a070b4f6d.png" 
                           alt="Salle d'embarquement Paris CDG - Porte C85, Royal Jordanian vers Amman"
-                          className="w-full h-auto transform translate-y-[-80px]"
+                          className="w-full h-auto transform translate-y-[80px]"
                         />
                       </div>
                       <div className="p-3 bg-muted/50">
