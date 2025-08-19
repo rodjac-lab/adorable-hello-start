@@ -17,20 +17,12 @@ const Journal = () => {
     {
       day: 2,
       date: "16 mars 2024", 
-      title: "Jerash - Pompéi du Moyen-Orient",
-      location: "Jerash, Jordanie",
-      story: "Le réveil s'est fait naturellement avec les premiers rayons du soleil perçant à travers les rideaux de ma chambre. Aujourd'hui, direction Jerash, cette cité antique que l'on surnomme la 'Pompéi du Moyen-Orient'. Le trajet d'une heure en taxi m'a offert mes premiers aperçus des paysages jordaniens : collines arides ponctuées d'oliviers centenaires et petits villages aux maisons de pierre claire.\n\nEn franchissant l'Arc d'Hadrien, cette porte monumentale érigée en l'honneur de l'empereur romain, j'ai ressenti un frisson d'émotion. Devant moi s'étendait l'une des cités romaines les mieux préservées au monde. Mon guide, Mahmoud, un passionné d'archéologie aux connaissances encyclopédiques, m'a fait revivre l'époque où cette ville comptait plus de 25 000 habitants.\n\nL'Oval Plaza m'a littéralement coupé le souffle. Cette place elliptique bordée de 56 colonnes corinthiennes défie toutes les conventions architecturales romaines. Mahmoud m'a expliqué que cette forme unique était probablement adaptée à la topographie locale, démontrant l'ingéniosité des constructeurs de l'époque. En me tenant au centre de cette place, j'ai fermé les yeux et imaginé l'animation qui y régnait il y a deux millénaires.\n\nL'après-midi s'est achevée au Théâtre Sud, où Mahmoud m'a démontré l'acoustique parfaite de ce lieu. Sa voix, même chuchotée depuis la scène, me parvenait clairement jusqu'aux gradins les plus hauts. Ce moment magique a scellé ma fascination pour cette civilisation qui savait allier beauté et fonctionnalité.",
-      mood: "Émerveillé",
-      photos: ["jerash-columns.jpg", "oval-plaza.jpg"]
-    },
-    {
-      day: 3,
-      date: "17 mars 2024",
-      title: "Ajloun et retour aux sources",
-      location: "Ajloun, Jordanie", 
-      story: "Cette troisième journée m'a menée vers les collines verdoyantes d'Ajloun, un contraste saisissant avec les paysages plus arides découverts jusqu'alors. La route serpentant à travers les montagnes m'a révélé une Jordanie inattendue : celle des forêts de chênes et des prairies parsemées de fleurs sauvages.\n\nLe château d'Ajloun, ou Qal'at ar-Rabad, se dresse fièrement sur sa colline comme un gardien millénaire. Cette forteresse ayyoubide du 12ème siècle, construite pour faire face aux croisés, raconte une tout autre histoire que les vestiges romains de la veille. En gravissant les escaliers de pierre usés par le temps, j'ai admiré l'ingéniosité défensive de cette architecture islamique : meurtrières stratégiquement placées, passages secrets, et cette vue panoramique qui s'étend jusqu'à la vallée du Jourdain.\n\nL'après-midi dans la réserve naturelle d'Ajloun a été un véritable bain de nature. Accompagnée d'un garde forestier, j'ai découvert une biodiversité surprenante : sangliers, renards, et une multitude d'oiseaux migrateurs. Le pique-nique improvisé sur un promontoire rocheux, avec vue sur les vallées environnantes, restera gravé dans ma mémoire.\n\nLa rencontre la plus touchante de cette journée fut celle d'une famille de bergers qui m'a invitée à partager le thé. Malgré la barrière de la langue, leurs sourires et leur générosité ont créé une communication universelle. En repartant vers Amman, le cœur empli de cette sérénité montagnarde, j'ai compris que la Jordanie offrait bien plus que ses trésors archéologiques.",
-      mood: "Serein",
-      photos: ["ajloun-castle.jpg", "nature-reserve.jpg"]
+      title: "Jerash, Ajlun et spa à Amman",
+      location: "Jerash, Ajlun, Amman",
+      story: "Mal dormi, toujours ce mal de dos. Petit déjeuner très correct à l'hôtel, puis réception de la voiture de location. Grosse déception : au lieu du SUV attendu, on se retrouve avec une Nissan Kicks. « Yes, this is mini SUV sir ». Mouais… On compte faire une réclamation.\n\nDirection Jerash. Les ruines romaines sont splendides. Le site est immense, bien conservé. On y ressent l'empreinte d'un passé glorieux. Une balade impressionnante à travers les siècles.\n\nDéjeuner sur place : assiette mixte grill avec agneau, bœuf et poulet, hummus, taboulé. Tout est délicieux, les saveurs locales s'imposent dès ce premier vrai repas.\n\nDans un coin discret du restaurant, cette salle était réservée à la préparation des chichas. Alignées comme des soldats prêts à servir, elles attendaient les amateurs de fumée parfumée. Nous avons décliné l'invitation cette fois-ci. Peut-être une autre fois.\n\nL'après-midi, visite du château de Ajlun. Intéressant mais très fréquenté, un peu trop. Retour à Amman pour une séance spa à l'hôtel : hammam, sauna, gommage, massage… Une belle pause bien méritée.\n\nLe soir, dîner chez Ghaith, petit restaurant familial du quartier, à distance de marche. Très bon, ambiance simple et conviviale.",
+      mood: "Mitigé",
+      photos: ["jerash-columns.jpg", "ajlun-castle.jpg"],
+      link: "https://maps.app.goo.gl/XHDM6vpRh1KCrQbB6"
     }
   ];
 
@@ -104,18 +96,29 @@ const Journal = () => {
                   {entry.day === 2 && (
                     <CulturalNote 
                       title="Note historique • Jerash" 
-                      icon="🏛️"
+                      icon="📜"
                     >
-                      <p className="mb-3">
-                        Jerash, anciennement appelée <em>Gérasa</em>, est l'une des villes de la Décapole les mieux préservées au monde. 
-                        Fondée par Alexandre le Grand au <strong>IVᵉ siècle av. J.-C.</strong>, elle a connu son apogée sous l'Empire romain.
-                      </p>
                       <p>
-                        Le site abrite des monuments remarquables comme l'Arc d'Hadrien (129 ap. J.-C.) et l'Oval Plaza, 
-                        une place ovale unique bordée de 56 colonnes ioniques, témoignage exceptionnel de l'adaptation 
-                        de l'architecture romaine aux contraintes topographiques locales.
+                        Fondée sous le nom d'<em>Antioch sur Chrysorrhoas</em>, Jerash s'est développée à l'époque gréco-romaine. 
+                        Elle faisait partie de la <strong>Décapole</strong>, un groupe de dix villes romaines d'Orient. 
+                        Au <strong>IIᵉ siècle</strong>, Jerash connaît son apogée avec temples, théâtres, colonnades et hippodrome. 
+                        Elle est partiellement détruite par un tremblement de terre au <strong>VIIIᵉ siècle</strong>, puis abandonnée.
                       </p>
                     </CulturalNote>
+                  )}
+
+                  {/* Restaurant link for day 2 */}
+                  {entry.day === 2 && entry.link && (
+                    <div className="mt-4">
+                      <a 
+                        href={entry.link} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 text-premium-accent hover:text-premium-foreground transition-colors duration-200 text-sm font-light"
+                      >
+                        🔗 Voir le restaurant Ghaith sur Google Maps
+                      </a>
+                    </div>
                   )}
                 </CardContent>
               </Card>
