@@ -30,14 +30,23 @@ All colors MUST be HSL.
     --ring: 15 55% 45%;
     --radius: 0.75rem;
     
+    /* Premium cultural notes palette */
+    --premium-background: 42 45% 96%;
+    --premium-foreground: 25 20% 25%;
+    --premium-muted: 35 15% 55%;
+    --premium-accent: 35 65% 55%;
+    --premium-border: 40 25% 85%;
+    
     /* Gradient variables */
     --gradient-primary: linear-gradient(135deg, hsl(15 55% 45%), hsl(25 45% 55%));
     --gradient-hero: linear-gradient(135deg, hsl(15 55% 25%), hsl(25 45% 35%));
     --gradient-card: linear-gradient(135deg, hsl(30 45% 98% / 0.8), hsl(25 35% 95% / 0.8));
+    --gradient-premium: linear-gradient(135deg, hsl(42 45% 96% / 0.9), hsl(38 35% 92% / 0.9));
     
     /* Shadows */
     --shadow-elegant: 0 10px 30px -10px hsl(15 55% 45% / 0.2);
     --shadow-card: 0 4px 20px -4px hsl(20 25% 25% / 0.1);
+    --shadow-premium: 0 8px 25px -8px hsl(35 45% 35% / 0.15);
     
     /* Sidebar */
     --sidebar-background: 30 45% 98%;
@@ -72,14 +81,23 @@ All colors MUST be HSL.
     --input: 20 15% 18%;
     --ring: 25 55% 65%;
     
+    /* Premium cultural notes - dark theme */
+    --premium-background: 25 25% 12%;
+    --premium-foreground: 35 25% 80%;
+    --premium-muted: 30 15% 60%;
+    --premium-accent: 35 55% 65%;
+    --premium-border: 25 20% 20%;
+    
     /* Dark gradients */
     --gradient-primary: linear-gradient(135deg, hsl(25 55% 35%), hsl(35 45% 45%));
     --gradient-hero: linear-gradient(135deg, hsl(20 35% 15%), hsl(25 25% 25%));
     --gradient-card: linear-gradient(135deg, hsl(20 25% 10% / 0.8), hsl(20 20% 15% / 0.8));
+    --gradient-premium: linear-gradient(135deg, hsl(25 25% 12% / 0.9), hsl(22 20% 15% / 0.9));
     
     /* Dark shadows */
     --shadow-elegant: 0 10px 30px -10px hsl(0 0% 0% / 0.3);
     --shadow-card: 0 4px 20px -4px hsl(0 0% 0% / 0.2);
+    --shadow-premium: 0 8px 25px -8px hsl(0 0% 0% / 0.4);
     
     /* Dark sidebar */
     --sidebar-background: 20 25% 10%;

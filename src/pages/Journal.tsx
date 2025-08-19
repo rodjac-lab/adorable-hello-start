@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Header } from "@/components/Header";
+import { CulturalNote } from "@/components/CulturalNote";
 
 const Journal = () => {
   const journalEntries = [
@@ -51,28 +52,28 @@ const Journal = () => {
         </div>
 
         <div className="container mx-auto px-4 py-16">
-          <div className="max-w-4xl mx-auto space-y-8">
+          <div className="max-w-4xl mx-auto space-y-12">
             {journalEntries.map((entry) => (
-              <Card key={entry.day} className="shadow-lg hover:shadow-xl transition-shadow border-l-4 border-l-primary">
-                <CardHeader>
+              <Card key={entry.day} className="shadow-elegant hover:shadow-premium transition-all duration-300 border-0 bg-gradient-to-br from-card via-card/95 to-card/90">
+                <CardHeader className="pb-4">
                   <div className="flex justify-between items-start">
                     <div>
-                      <CardTitle className="text-2xl mb-2">
-                        Jour {entry.day} - {entry.title}
+                      <CardTitle className="font-serif text-3xl mb-3 text-foreground tracking-wide">
+                        Jour {entry.day} — {entry.title}
                       </CardTitle>
-                      <CardDescription className="text-lg">
+                      <CardDescription className="text-lg text-muted-foreground font-light">
                         {entry.date} • {entry.location}
                       </CardDescription>
                     </div>
-                    <Badge variant="secondary" className="ml-4">
+                    <Badge variant="secondary" className="ml-4 px-3 py-1 font-light tracking-wide">
                       {entry.mood}
                     </Badge>
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-0">
                   <div>
                     <div className="prose prose-slate dark:prose-invert max-w-none">
-                      <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
+                      <p className="text-foreground/90 leading-relaxed whitespace-pre-line font-light text-base tracking-wide">
                         {entry.story}
                       </p>
                     </div>
@@ -101,15 +102,20 @@ const Journal = () => {
                   
                   {/* Cultural Note for Jerash */}
                   {entry.day === 2 && (
-                    <div className="mt-6 p-4 bg-primary/5 rounded-lg border-l-4 border-l-primary">
-                      <h5 className="font-semibold mb-2 text-primary">💡 Note culturelle : Jerash</h5>
-                      <p className="text-sm text-muted-foreground">
-                        Jerash, anciennement appelée Gérasa, est l'une des villes de la Décapole les mieux préservées au monde. 
-                        Fondée par Alexandre le Grand au 4ème siècle av. J.-C., elle a connu son apogée sous l'Empire romain. 
-                        Le site abrite des monuments remarquables comme l'Arc d'Hadrien (129 ap. J.-C.) et l'Oval Plaza, 
-                        une place ovale unique bordée de 56 colonnes ioniques.
+                    <CulturalNote 
+                      title="Note historique • Jerash" 
+                      icon="🏛️"
+                    >
+                      <p className="mb-3">
+                        Jerash, anciennement appelée <em>Gérasa</em>, est l'une des villes de la Décapole les mieux préservées au monde. 
+                        Fondée par Alexandre le Grand au <strong>IVᵉ siècle av. J.-C.</strong>, elle a connu son apogée sous l'Empire romain.
                       </p>
-                    </div>
+                      <p>
+                        Le site abrite des monuments remarquables comme l'Arc d'Hadrien (129 ap. J.-C.) et l'Oval Plaza, 
+                        une place ovale unique bordée de 56 colonnes ioniques, témoignage exceptionnel de l'adaptation 
+                        de l'architecture romaine aux contraintes topographiques locales.
+                      </p>
+                    </CulturalNote>
                   )}
                 </CardContent>
               </Card>

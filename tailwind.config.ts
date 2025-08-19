@@ -27,6 +27,7 @@ export default {
 			boxShadow: {
 				'elegant': 'var(--shadow-elegant)',
 				'card': 'var(--shadow-card)',
+				'premium': 'var(--shadow-premium)',
 			},
 			colors: {
 				border: 'hsl(var(--border))',
@@ -71,6 +72,13 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				premium: {
+					background: 'hsl(var(--premium-background))',
+					foreground: 'hsl(var(--premium-foreground))',
+					muted: 'hsl(var(--premium-muted))',
+					accent: 'hsl(var(--premium-accent))',
+					border: 'hsl(var(--premium-border))'
 				}
 			},
 			borderRadius: {
