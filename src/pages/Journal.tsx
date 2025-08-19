@@ -78,6 +78,25 @@ const Journal = () => {
                   </div>
                 </div>
                 
+                {/* Photo du jour 1 - Embarquement */}
+                {entry.day === 1 && (
+                  <div className="mt-6">
+                    <h4 className="font-semibold mb-3 text-lg">📸 Photo du jour</h4>
+                    <div className="rounded-lg overflow-hidden shadow-md">
+                      <img 
+                        src="/lovable-uploads/0b1d45f0-c3dd-413d-89aa-6d7a070b4f6d.png" 
+                        alt="Salle d'embarquement Paris CDG - Porte C85, Royal Jordanian vers Amman"
+                        className="w-full h-auto"
+                      />
+                      <div className="p-3 bg-muted/50">
+                        <p className="text-sm text-muted-foreground text-center">
+                          Embarquement pour Amman – Porte C85, Royal Jordanian
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 {/* Cultural Note for Jerash */}
                 {entry.day === 2 && (
                   <div className="mt-6 p-4 bg-primary/5 rounded-lg border-l-4 border-l-primary">
