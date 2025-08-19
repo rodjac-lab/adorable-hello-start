@@ -92,6 +92,23 @@ const Journal = () => {
                     </div>
                   )}
                   
+                  {/* Cultural Note for Queen Alia Airport */}
+                  {entry.day === 1 && (
+                    <CulturalNote 
+                      title="Infos pratiques • Aéroport Queen Alia" 
+                      icon="✈️"
+                    >
+                      <p>
+                        L'<strong>aéroport international Queen Alia</strong> (AMM) a été inauguré en <strong>1983</strong> et rénové en profondeur avec un nouveau terminal en <strong>2013</strong>. 
+                        Il accueille environ <strong>9 millions de passagers</strong> par an et constitue le hub principal de Royal Jordanian Airlines.
+                      </p>
+                      <p className="mt-3">
+                        L'aéroport porte le nom de la <strong>Reine Alia Al-Hussein</strong> (1948-1977), troisième épouse du roi Hussein de Jordanie. 
+                        D'origine palestinienne, elle était très engagée dans les causes humanitaires et particulièrement appréciée du peuple jordanien avant sa mort tragique dans un accident d'hélicoptère.
+                      </p>
+                    </CulturalNote>
+                  )}
+                  
                   {/* Cultural Note for Jerash */}
                   {entry.day === 2 && (
                     <CulturalNote 
