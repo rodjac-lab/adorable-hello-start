@@ -14,12 +14,12 @@ const Index = () => {
             Deux semaines de découverte au cœur du Moyen-Orient
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button className="bg-white text-primary px-8 py-3 rounded-full font-semibold hover:bg-white/90 transition-colors">
+            <a href="/journal" className="bg-white text-primary px-8 py-3 rounded-full font-semibold hover:bg-white/90 transition-colors text-center">
               Découvrir le voyage
-            </button>
-            <button className="border-2 border-white text-white px-8 py-3 rounded-full font-semibold hover:bg-white/10 transition-colors">
-              Galerie photos
-            </button>
+            </a>
+            <a href="/gallery" className="border-2 border-white text-white px-8 py-3 rounded-full font-semibold hover:bg-white/10 transition-colors text-center">
+              Galerie & Carte
+            </a>
           </div>
         </div>
         {/* Background pattern */}
@@ -45,9 +45,9 @@ const Index = () => {
             <p className="text-muted-foreground mb-4">
               Suivez jour par jour mes aventures, découvertes et impressions
             </p>
-            <button className="text-primary font-semibold hover:underline">
+            <a href="/journal" className="text-primary font-semibold hover:underline">
               Lire les entrées →
-            </button>
+            </a>
           </div>
 
           {/* Culture & History */}
@@ -73,9 +73,9 @@ const Index = () => {
             <p className="text-muted-foreground mb-4">
               Un voyage culinaire à travers les saveurs jordaniennes
             </p>
-            <button className="text-primary font-semibold hover:underline">
+            <a href="/food" className="text-primary font-semibold hover:underline">
               Déguster →
-            </button>
+            </a>
           </div>
 
           {/* Photo Gallery */}
@@ -83,13 +83,13 @@ const Index = () => {
             <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
               <span className="text-2xl">📸</span>
             </div>
-            <h3 className="text-xl font-semibold mb-3 text-card-foreground">Galerie</h3>
+            <h3 className="text-xl font-semibold mb-3 text-card-foreground">Galerie & Carte</h3>
             <p className="text-muted-foreground mb-4">
-              Les plus beaux moments capturés en images
+              Les plus beaux moments et l'itinéraire interactif
             </p>
-            <button className="text-primary font-semibold hover:underline">
-              Voir les photos →
-            </button>
+            <a href="/gallery" className="text-primary font-semibold hover:underline">
+              Explorer →
+            </a>
           </div>
 
           {/* Recommendations */}
@@ -101,9 +101,9 @@ const Index = () => {
             <p className="text-muted-foreground mb-4">
               Mes recommandations pour approfondir la découverte
             </p>
-            <button className="text-primary font-semibold hover:underline">
+            <a href="/recommendations" className="text-primary font-semibold hover:underline">
               Découvrir →
-            </button>
+            </a>
           </div>
 
           {/* About */}

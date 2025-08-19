@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Journal from "./pages/Journal";
 import Food from "./pages/Food";
+import Gallery from "./pages/Gallery";
 import Recommendations from "./pages/Recommendations";
 import NotFound from "./pages/NotFound";
 
@@ -21,6 +22,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/journal" element={<Journal />} />
           <Route path="/food" element={<Food />} />
+          <Route path="/gallery" element={<Gallery />} />
           <Route path="/recommendations" element={<Recommendations />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
