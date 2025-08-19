@@ -5,45 +5,24 @@ const Journal = () => {
   const journalEntries = [
     {
       day: 1,
-      date: "15 Mars 2024",
-      title: "Arrivée à Amman",
-      location: "Amman",
+      date: "30 Juillet 2024",
+      title: "Départ et arrivée à Amman",
+      location: "Lyon → Paris CDG → Amman",
       activities: [
-        "Atterrissage à l'aéroport Queen Alia",
-        "Installation à l'hôtel dans le centre-ville",
-        "Première promenade dans Downtown Amman",
-        "Découverte du souk traditionnel"
+        "Départ de Lyon en train Ouigo (trajet décevant, inconfort)",
+        "Vol Royal Jordanian depuis Paris CDG, embarquement porte C85",
+        "Places rang 11 avec bon confort pour les jambes",
+        "Atterrissage à l'aéroport Queen Alia d'Amman",
+        "Prise en charge par contact de l'agence, formalités rapides",
+        "Achat de carte SIM",
+        "Trajet de 45 minutes jusqu'à l'hôtel avec chauffeur bavard parlant français",
+        "Installation à l'hôtel et repos"
       ],
-      highlights: "Premier contact avec l'hospitalité jordanienne",
-      mood: "Excité"
-    },
-    {
-      day: 2,
-      date: "16 Mars 2024", 
-      title: "Jerash la magnifique",
-      location: "Jerash",
-      activities: [
-        "Départ matinal vers Jerash",
-        "Visite guidée des ruines romaines",
-        "Théâtre sud et ses acoustiques incroyables",
-        "Déjeuner dans un restaurant local"
-      ],
-      highlights: "L'arc d'Hadrien et les colonnes de l'Oval Plaza",
-      mood: "Émerveillé"
-    },
-    {
-      day: 3,
-      date: "17 Mars 2024",
-      title: "Château d'Ajloun et nature",
-      location: "Ajloun",
-      activities: [
-        "Randonnée vers le château d'Ajloun",
-        "Exploration de la forteresse médiévale",
-        "Pause dans la réserve naturelle",
-        "Observation de la faune locale"
-      ],
-      highlights: "Vue panoramique depuis les remparts",
-      mood: "Aventurier"
+      highlights: "Premier contact avec la chaleur jordanienne et l'accueil chaleureux",
+      mood: "Soulagé d'être arrivé",
+      photos: [
+        "📸 Embarquement pour Amman – Porte C85, Royal Jordanian"
+      ]
     }
   ];
 
