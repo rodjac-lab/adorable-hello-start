@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Map from "@/components/Map";
+import { Header } from "@/components/Header";
 
 const Gallery = () => {
   const photoSections = [
@@ -67,17 +68,23 @@ const Gallery = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 dark:from-amber-950 dark:via-orange-950 dark:to-red-950">
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold mb-4 text-foreground">
-            Galerie & Carte
-          </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Revivez le voyage à travers les images et explorez l'itinéraire 
-            sur une carte interactive
-          </p>
+    <>
+      <Header />
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 dark:from-amber-950 dark:via-orange-950 dark:to-red-950 pt-20">
+        {/* Hero Section */}
+        <div className="relative pt-16 pb-24 bg-gradient-to-r from-primary via-secondary to-accent text-white overflow-hidden">
+          <div className="absolute inset-0 bg-black/20"></div>
+          <div className="relative container mx-auto px-4 text-center">
+            <h1 className="text-6xl font-playfair font-bold mb-6 animate-fade-in">
+              Galerie & Carte
+            </h1>
+            <p className="text-xl max-w-2xl mx-auto leading-relaxed animate-fade-in">
+              Revivez le voyage à travers les images et explorez l'itinéraire sur une carte interactive
+            </p>
+          </div>
         </div>
+
+        <div className="container mx-auto px-4 py-16">
 
         {/* Interactive Map Section */}
         <div className="mb-16">
@@ -170,8 +177,9 @@ const Gallery = () => {
             Chaque image raconte une histoire... 📷
           </p>
         </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

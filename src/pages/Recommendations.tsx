@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Header } from "@/components/Header";
 
 const Recommendations = () => {
   const books = [
@@ -77,17 +78,23 @@ const Recommendations = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 dark:from-amber-950 dark:via-orange-950 dark:to-red-950">
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold mb-4 text-foreground">
-            Lectures recommandées
-          </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Pour approfondir votre découverte de la Jordanie : histoire, culture, 
-            gastronomie et géopolitique à travers une sélection de livres essentiels
-          </p>
+    <>
+      <Header />
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 dark:from-amber-950 dark:via-orange-950 dark:to-red-950 pt-20">
+        {/* Hero Section */}
+        <div className="relative pt-16 pb-24 bg-gradient-to-r from-primary via-secondary to-accent text-white overflow-hidden">
+          <div className="absolute inset-0 bg-black/20"></div>
+          <div className="relative container mx-auto px-4 text-center">
+            <h1 className="text-6xl font-playfair font-bold mb-6 animate-fade-in">
+              Lectures recommandées
+            </h1>
+            <p className="text-xl max-w-2xl mx-auto leading-relaxed animate-fade-in">
+              Pour approfondir votre découverte de la Jordanie : histoire, culture, gastronomie et géopolitique
+            </p>
+          </div>
         </div>
+
+        <div className="container mx-auto px-4 py-16">
 
         {/* Introduction */}
         <Card className="mb-8 shadow-lg">
@@ -186,8 +193,9 @@ const Recommendations = () => {
             Bonnes lectures et... bon voyage ! 📖✈️
           </p>
         </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

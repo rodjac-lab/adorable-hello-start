@@ -1,5 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Header } from "@/components/Header";
 
 const Food = () => {
   const foodExperiences = [
@@ -59,17 +60,23 @@ const Food = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 dark:from-amber-950 dark:via-orange-950 dark:to-red-950">
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold mb-4 text-foreground">
-            Voyage culinaire
-          </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Découverte des saveurs authentiques de la Jordanie, entre traditions millénaires 
-            et hospitalité légendaire
-          </p>
+    <>
+      <Header />
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 dark:from-amber-950 dark:via-orange-950 dark:to-red-950 pt-20">
+        {/* Hero Section */}
+        <div className="relative pt-16 pb-24 bg-gradient-to-r from-primary via-secondary to-accent text-white overflow-hidden">
+          <div className="absolute inset-0 bg-black/20"></div>
+          <div className="relative container mx-auto px-4 text-center">
+            <h1 className="text-6xl font-playfair font-bold mb-6 animate-fade-in">
+              Voyage culinaire
+            </h1>
+            <p className="text-xl max-w-2xl mx-auto leading-relaxed animate-fade-in">
+              Découverte des saveurs authentiques de la Jordanie, entre traditions millénaires et hospitalité légendaire
+            </p>
+          </div>
         </div>
+
+        <div className="container mx-auto px-4 py-16">
 
         {/* Introduction */}
         <Card className="mb-8 shadow-lg">
@@ -147,8 +154,9 @@ const Food = () => {
             Les saveurs continuent de danser dans mes souvenirs... 🌶️
           </p>
         </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

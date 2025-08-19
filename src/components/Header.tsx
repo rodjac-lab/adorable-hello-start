@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { Menu, X, BookOpen } from "lucide-react";
+import { Menu, X, BookOpen, Calendar, Utensils, Camera, BookOpenCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const navigation = [
-  { name: "Journal", href: "/journal" },
-  { name: "Gastronomie", href: "/food" },
-  { name: "Galerie", href: "/gallery" },
-  { name: "Lectures", href: "/recommendations" },
+  { name: "Journal", href: "/journal", icon: Calendar },
+  { name: "Gastronomie", href: "/food", icon: Utensils },
+  { name: "Galerie", href: "/gallery", icon: Camera },
+  { name: "Lectures", href: "/recommendations", icon: BookOpenCheck },
 ];
 
 export function Header() {
@@ -34,16 +34,20 @@ export function Header() {
           </Button>
         </div>
         
-        <div className="hidden lg:flex lg:gap-x-12">
-          {navigation.map((item) => (
-            <a
-              key={item.name}
-              href={item.href}
-              className="text-sm font-inter font-medium leading-6 text-foreground hover:text-primary transition-colors"
-            >
-              {item.name}
-            </a>
-          ))}
+        <div className="hidden lg:flex lg:gap-x-8">
+          {navigation.map((item) => {
+            const IconComponent = item.icon;
+            return (
+              <a
+                key={item.name}
+                href={item.href}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-inter font-medium leading-6 text-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-all duration-200 group"
+              >
+                <IconComponent className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                {item.name}
+              </a>
+            );
+          })}
         </div>
       </nav>
       
@@ -70,16 +74,20 @@ export function Header() {
             <div className="mt-6 flow-root">
               <div className="-my-6 divide-y divide-border">
                 <div className="space-y-2 py-6">
-                  {navigation.map((item) => (
-                    <a
-                      key={item.name}
-                      href={item.href}
-                      className="-mx-3 block rounded-lg px-3 py-2 text-base font-inter font-medium leading-7 text-foreground hover:bg-muted"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      {item.name}
-                    </a>
-                  ))}
+                  {navigation.map((item) => {
+                    const IconComponent = item.icon;
+                    return (
+                      <a
+                        key={item.name}
+                        href={item.href}
+                        className="flex items-center gap-3 -mx-3 rounded-lg px-3 py-3 text-base font-inter font-medium leading-7 text-foreground hover:bg-muted group"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <IconComponent className="h-5 w-5 group-hover:scale-110 transition-transform" />
+                        {item.name}
+                      </a>
+                    );
+                  })}
                 </div>
               </div>
             </div>
