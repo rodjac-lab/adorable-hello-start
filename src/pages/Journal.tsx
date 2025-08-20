@@ -1,10 +1,46 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Header } from "@/components/Header";
 import { CulturalNote } from "@/components/CulturalNote";
+import { AddJournalEntryForm } from "@/components/AddJournalEntryForm";
+import { Plus } from "lucide-react";
+import { useState, useEffect } from "react";
+
+type JournalEntry = {
+  day: number;
+  date: string;
+  title: string;
+  location: string;
+  story: string;
+  mood: string;
+  photos?: string[];
+  link?: string;
+};
 
 const Journal = () => {
-  const journalEntries = [
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [customEntries, setCustomEntries] = useState<JournalEntry[]>([]);
+
+  // Load custom entries from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('journalEntries');
+    if (saved) {
+      try {
+        setCustomEntries(JSON.parse(saved));
+      } catch (error) {
+        console.error('Error loading saved entries:', error);
+      }
+    }
+  }, []);
+
+  // Save custom entries to localStorage
+  const saveToLocalStorage = (entries: JournalEntry[]) => {
+    localStorage.setItem('journalEntries', JSON.stringify(entries));
+  };
+
+  const defaultEntries: JournalEntry[] = [
     { 
       day: 1, 
       date: "15 mars 2024",
@@ -26,6 +62,31 @@ const Journal = () => {
     }
   ];
 
+  // Combine default and custom entries, sort by day
+  const allEntries = [...defaultEntries, ...customEntries].sort((a, b) => a.day - b.day);
+
+  const handleAddEntry = (formData: any) => {
+    const newEntry: JournalEntry = {
+      day: formData.day,
+      date: formData.date.toLocaleDateString('fr-FR', { 
+        day: 'numeric', 
+        month: 'long', 
+        year: 'numeric' 
+      }),
+      title: formData.title,
+      location: formData.location,
+      story: formData.story,
+      mood: formData.mood,
+      photos: formData.photos || [],
+      link: formData.link || undefined,
+    };
+
+    const updatedEntries = [...customEntries, newEntry];
+    setCustomEntries(updatedEntries);
+    saveToLocalStorage(updatedEntries);
+    setIsFormOpen(false);
+  };
+
   return (
     <>
       <Header />
@@ -44,8 +105,32 @@ const Journal = () => {
         </div>
 
         <div className="container mx-auto px-4 py-16">
+          {/* Add Entry Button */}
+          <div className="max-w-4xl mx-auto mb-8">
+            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+              <DialogTrigger asChild>
+                <Button 
+                  size="lg" 
+                  className="w-full md:w-auto mx-auto flex items-center gap-2 text-lg py-6 px-8 shadow-elegant hover:shadow-premium transition-all duration-300"
+                >
+                  <Plus className="w-5 h-5" />
+                  Ajouter une nouvelle entrée
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle className="font-serif text-2xl">Nouvelle entrée de journal</DialogTitle>
+                </DialogHeader>
+                <AddJournalEntryForm 
+                  onSubmit={handleAddEntry}
+                  onCancel={() => setIsFormOpen(false)}
+                />
+              </DialogContent>
+            </Dialog>
+          </div>
+
           <div className="max-w-4xl mx-auto space-y-12">
-            {journalEntries.map((entry) => (
+            {allEntries.map((entry) => (
               <Card key={entry.day} className="shadow-elegant hover:shadow-premium transition-all duration-300 border-0 bg-gradient-to-br from-card via-card/95 to-card/90">
                 <CardHeader className="pb-4">
                   <div className="flex justify-between items-start">
@@ -124,8 +209,8 @@ const Journal = () => {
                     </CulturalNote>
                   )}
 
-                  {/* Restaurant link for day 2 */}
-                  {entry.day === 2 && entry.link && (
+                  {/* Generic link for any entry */}
+                  {entry.link && (
                     <div className="mt-4">
                       <a 
                         href={entry.link} 
@@ -133,7 +218,7 @@ const Journal = () => {
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 text-premium-accent hover:text-premium-foreground transition-colors duration-200 text-sm font-light"
                       >
-                        🔗 Voir le restaurant Ghaith sur Google Maps
+                        🔗 {entry.day === 2 ? "Voir le restaurant Ghaith sur Google Maps" : "Voir le lien"}
                       </a>
                     </div>
                   )}
@@ -144,7 +229,10 @@ const Journal = () => {
 
           <div className="text-center mt-12">
             <p className="text-muted-foreground">
-              Plus d'entrées bientôt... Le voyage continue !
+              {customEntries.length > 0 
+                ? `${allEntries.length} entrées au total - Le voyage continue !`
+                : "Plus d'entrées bientôt... Le voyage continue !"
+              }
             </p>
           </div>
         </div>
