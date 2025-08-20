@@ -5,169 +5,41 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Header } from "@/components/Header";
 import { CulturalNote } from "@/components/CulturalNote";
 import { AddJournalEntryForm } from "@/components/AddJournalEntryForm";
-import { Plus, Edit3 } from "lucide-react";
-import { useState, useEffect } from "react";
-
-type JournalEntry = {
-  day: number;
-  date: string;
-  title: string;
-  location: string;
-  story: string;
-  mood: string;
-  photos?: string[];
-  link?: string;
-};
+import { Plus, Edit3, RefreshCw } from "lucide-react";
+import { useState } from "react";
+import { useJournalEntries } from "@/hooks/useJournalEntries";
+import { JournalEntry } from "@/lib/journalStorage";
 
 const Journal = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [customEntries, setCustomEntries] = useState<JournalEntry[]>([]);
   const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
-
-  // Load custom entries from localStorage on mount
-  useEffect(() => {
-    const saved = localStorage.getItem('journalEntries');
-    console.log('🔍 Loading from localStorage:', saved);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        console.log('✅ Parsed entries:', parsed);
-        setCustomEntries(parsed);
-      } catch (error) {
-        console.error('❌ Error loading saved entries:', error);
-      }
-    } else {
-      console.log('📭 No saved entries found in localStorage');
-    }
-  }, []);
-
-  // Save custom entries to localStorage
-  const saveToLocalStorage = (entries: JournalEntry[]) => {
-    console.log('💾 Saving to localStorage:', entries);
-    localStorage.setItem('journalEntries', JSON.stringify(entries));
-    
-    // Verify the save worked
-    const verification = localStorage.getItem('journalEntries');
-    console.log('🔍 Verification after save:', verification);
-  };
-
-  const defaultEntries: JournalEntry[] = [
-    { 
-      day: 1, 
-      date: "15 mars 2024",
-      title: "Arrivée à Amman",
-      location: "Amman, Jordanie",
-      story: "Départ de Lyon le 30/07, direction Paris CDG en train. Le trajet en Ouigo s'est avéré décevant : inconfort, mal de dos… Heureusement, à l'aéroport CDG, les choses s'enchaînent facilement : pas de bagage à enregistrer, embarquement rapide. Les places en rang 11 offrent un bon confort pour les jambes, mais le dos continue de protester.\n\nÀ l'arrivée à l'aéroport Queen Alia d'Amman, un contact de l'agence nous prend en charge. Les formalités sont rapides. Achat de carte SIM, puis trajet de 45 minutes jusqu'à l'hôtel. La chaleur est bien là. Le chauffeur est bavard et parle un peu français. Une fois à l'hôtel : installation et dodo.",
-      mood: "Enthousiaste",
-      photos: ["amman-theater.jpg", "citadel-view.jpg"]
-    },
-    {
-      day: 2,
-      date: "16 mars 2024", 
-      title: "Jerash, Ajlun et spa à Amman",
-      location: "Jerash, Ajlun, Amman",
-      story: "Mal dormi, toujours ce mal de dos. Petit déjeuner très correct à l'hôtel, puis réception de la voiture de location. Grosse déception : au lieu du SUV attendu, on se retrouve avec une Nissan Kicks. « Yes, this is mini SUV sir ». Mouais… On compte faire une réclamation.\n\nDirection Jerash. Les ruines romaines sont splendides. Le site est immense, bien conservé. On y ressent l'empreinte d'un passé glorieux. Une balade impressionnante à travers les siècles.\n\nDéjeuner sur place : assiette mixte grill avec agneau, bœuf et poulet, hummus, taboulé. Tout est délicieux, les saveurs locales s'imposent dès ce premier vrai repas.\n\nDans un coin discret du restaurant, cette salle était réservée à la préparation des chichas. Alignées comme des soldats prêts à servir, elles attendaient les amateurs de fumée parfumée. Nous avons décliné l'invitation cette fois-ci. Peut-être une autre fois.\n\nL'après-midi, visite du château de Ajlun. Intéressant mais très fréquenté, un peu trop. Retour à Amman pour une séance spa à l'hôtel : hammam, sauna, gommage, massage… Une belle pause bien méritée.\n\nLe soir, dîner chez Ghaith, petit restaurant familial du quartier, à distance de marche. Très bon, ambiance simple et conviviale.",
-      mood: "Mitigé",
-      photos: ["jerash-columns.jpg", "ajlun-castle.jpg"],
-      link: "https://maps.app.goo.gl/XHDM6vpRh1KCrQbB6"
-    }
-  ];
-
-  // Combine default and custom entries, prioritizing custom ones for same day, sort by day
-  const mergeEntries = () => {
-    const merged: JournalEntry[] = [];
-    const customDays = new Set(customEntries.map(entry => entry.day));
-    
-    console.log('🔄 Merging entries:');
-    console.log('   📝 Custom entries:', customEntries);
-    console.log('   📚 Custom days:', Array.from(customDays));
-    console.log('   📖 Default entries:', defaultEntries);
-    
-    // Add all custom entries first
-    merged.push(...customEntries);
-    
-    // Add default entries only if no custom entry exists for that day
-    defaultEntries.forEach(defaultEntry => {
-      if (!customDays.has(defaultEntry.day)) {
-        merged.push(defaultEntry);
-      }
-    });
-    
-    const final = merged.sort((a, b) => a.day - b.day);
-    console.log('✨ Final merged entries:', final);
-    return final;
-  };
   
-  const allEntries = mergeEntries();
+  const { 
+    allEntries, 
+    customEntries, 
+    isLoading, 
+    error, 
+    addEntry, 
+    editEntry, 
+    getStats, 
+    reloadEntries 
+  } = useJournalEntries();
 
   const handleAddEntry = (formData: any) => {
-    const newEntry: JournalEntry = {
-      day: formData.day,
-      date: formData.date.toLocaleDateString('fr-FR', { 
-        day: 'numeric', 
-        month: 'long', 
-        year: 'numeric' 
-      }),
-      title: formData.title,
-      location: formData.location,
-      story: formData.story,
-      mood: formData.mood,
-      photos: formData.photos || [],
-      link: formData.link || undefined,
-    };
-
-    const updatedEntries = [...customEntries, newEntry];
-    setCustomEntries(updatedEntries);
-    saveToLocalStorage(updatedEntries);
-    setIsFormOpen(false);
+    const success = addEntry(formData);
+    if (success) {
+      setIsFormOpen(false);
+    }
   };
 
   const handleEditEntry = (formData: any) => {
-    console.log('✏️ Starting edit process:');
-    console.log('   📝 Form data:', formData);
-    console.log('   🎯 Editing entry:', editingEntry);
-    console.log('   📊 Current custom entries:', customEntries);
+    if (!editingEntry) return;
     
-    const updatedEntry: JournalEntry = {
-      day: formData.day,
-      date: formData.date.toLocaleDateString('fr-FR', { 
-        day: 'numeric', 
-        month: 'long', 
-        year: 'numeric' 
-      }),
-      title: formData.title,
-      location: formData.location,
-      story: formData.story,
-      mood: formData.mood,
-      photos: formData.photos || [],
-      link: formData.link || undefined,
-    };
-
-    console.log('✨ Created updated entry:', updatedEntry);
-
-    // Check if editing an existing custom entry or creating a new one from default
-    const existingCustomIndex = customEntries.findIndex(entry => entry.day === editingEntry!.day);
-    console.log(`🔍 Looking for existing entry for day ${editingEntry!.day}:`, existingCustomIndex);
-    
-    let updatedEntries: JournalEntry[];
-    
-    if (existingCustomIndex >= 0) {
-      // Update existing custom entry
-      console.log('📝 Updating existing custom entry at index:', existingCustomIndex);
-      updatedEntries = [...customEntries];
-      updatedEntries[existingCustomIndex] = updatedEntry;
-    } else {
-      // Create new custom entry (was originally a default entry)
-      console.log('🆕 Creating new custom entry from default');
-      updatedEntries = [...customEntries, updatedEntry];
+    const success = editEntry(formData, editingEntry.day);
+    if (success) {
+      setEditingEntry(null);
+      setIsFormOpen(false);
     }
-
-    console.log('📦 Final updated entries array:', updatedEntries);
-
-    setCustomEntries(updatedEntries);
-    saveToLocalStorage(updatedEntries);
-    setEditingEntry(null);
-    setIsFormOpen(false);
   };
 
   const openEditDialog = (entry: JournalEntry) => {
@@ -179,6 +51,20 @@ const Journal = () => {
     setIsFormOpen(false);
     setEditingEntry(null);
   };
+
+  if (isLoading) {
+    return (
+      <>
+        <Header />
+        <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 dark:from-amber-950 dark:via-orange-950 dark:to-red-950 pt-20 flex items-center justify-center">
+          <div className="text-center">
+            <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4" />
+            <p>Chargement du journal...</p>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -198,6 +84,32 @@ const Journal = () => {
         </div>
 
         <div className="container mx-auto px-4 py-16">
+          {/* Debug Panel */}
+          {error && (
+            <div className="max-w-4xl mx-auto mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-700">⚠️ {error}</p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={reloadEntries}
+                className="mt-2"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Recharger les données
+              </Button>
+            </div>
+          )}
+
+          {/* Debug Info */}
+          <div className="max-w-4xl mx-auto mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h3 className="font-semibold mb-2">📊 Statistiques Debug</h3>
+            <div className="text-sm text-gray-700">
+              <p>Entrées personnalisées: {customEntries.length}</p>
+              <p>Total affiché: {allEntries.length}</p>
+              <p>Jours: {getStats().days.join(', ')}</p>
+            </div>
+          </div>
+
           {/* Add Entry Button */}
           <div className="max-w-4xl mx-auto mb-8">
             <Dialog open={isFormOpen} onOpenChange={closeDialog}>
@@ -313,7 +225,7 @@ const Journal = () => {
                   )}
                   
                   {/* Photos for custom entries */}
-                  {entry.photos && entry.photos.length > 0 && !defaultEntries.some(defaultEntry => defaultEntry.day === entry.day) && (
+                  {entry.photos && entry.photos.length > 0 && customEntries.some(custom => custom.day === entry.day) && (
                     <div className="mt-6">
                       <h4 className="font-semibold mb-3 text-lg">📸 Photos</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -370,7 +282,7 @@ const Journal = () => {
           <div className="text-center mt-12">
             <p className="text-muted-foreground">
               {customEntries.length > 0 
-                ? `${allEntries.length} entrées au total - Le voyage continue !`
+                ? `${allEntries.length} entrées au total (${customEntries.length} personnalisées) - Le voyage continue !`
                 : "Plus d'entrées bientôt... Le voyage continue !"
               }
             </p>
