@@ -26,6 +26,14 @@ const defaultEntries: JournalEntry[] = [
     mood: "Mitigé",
     photos: ["jerash-columns.jpg", "ajlun-castle.jpg"],
     link: "https://maps.app.goo.gl/XHDM6vpRh1KCrQbB6"
+  },
+  {
+    day: 3,
+    date: "17 mars 2024",
+    title: "Découverte de Petra",
+    location: "Petra, Jordanie",
+    story: "Réveil matinal pour prendre la route vers Petra. Le trajet de 3h30 nous mène à travers des paysages désertiques spectaculaires. Arrivée à Wadi Musa, la ville qui borde le site de Petra.\n\nPremière visite du site archéologique le plus célèbre de Jordanie. L'entrée par le Siq, cette gorge étroite et sinueuse, est déjà une expérience en soi. Et puis soudain, au détour d'un virage, apparaît le Trésor (Al-Khazneh), taillé à même la roche rose. Un moment magique.\n\nLa découverte continue avec l'amphithéâtre romain, les tombeaux royaux, et une montée vers le Monastère (Ad-Deir). Les couleurs de la pierre changent selon la lumière : du rose au rouge, en passant par l'ocre et le violet.\n\nJournée intense mais inoubliable. Installation à l'hôtel à Wadi Musa pour la nuit.",
+    mood: "Émerveillé"
   }
 ];
 
