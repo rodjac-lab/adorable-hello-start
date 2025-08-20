@@ -27,18 +27,28 @@ const Journal = () => {
   // Load custom entries from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem('journalEntries');
+    console.log('🔍 Loading from localStorage:', saved);
     if (saved) {
       try {
-        setCustomEntries(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        console.log('✅ Parsed entries:', parsed);
+        setCustomEntries(parsed);
       } catch (error) {
-        console.error('Error loading saved entries:', error);
+        console.error('❌ Error loading saved entries:', error);
       }
+    } else {
+      console.log('📭 No saved entries found in localStorage');
     }
   }, []);
 
   // Save custom entries to localStorage
   const saveToLocalStorage = (entries: JournalEntry[]) => {
+    console.log('💾 Saving to localStorage:', entries);
     localStorage.setItem('journalEntries', JSON.stringify(entries));
+    
+    // Verify the save worked
+    const verification = localStorage.getItem('journalEntries');
+    console.log('🔍 Verification after save:', verification);
   };
 
   const defaultEntries: JournalEntry[] = [
@@ -68,6 +78,11 @@ const Journal = () => {
     const merged: JournalEntry[] = [];
     const customDays = new Set(customEntries.map(entry => entry.day));
     
+    console.log('🔄 Merging entries:');
+    console.log('   📝 Custom entries:', customEntries);
+    console.log('   📚 Custom days:', Array.from(customDays));
+    console.log('   📖 Default entries:', defaultEntries);
+    
     // Add all custom entries first
     merged.push(...customEntries);
     
@@ -78,7 +93,9 @@ const Journal = () => {
       }
     });
     
-    return merged.sort((a, b) => a.day - b.day);
+    const final = merged.sort((a, b) => a.day - b.day);
+    console.log('✨ Final merged entries:', final);
+    return final;
   };
   
   const allEntries = mergeEntries();
@@ -106,6 +123,11 @@ const Journal = () => {
   };
 
   const handleEditEntry = (formData: any) => {
+    console.log('✏️ Starting edit process:');
+    console.log('   📝 Form data:', formData);
+    console.log('   🎯 Editing entry:', editingEntry);
+    console.log('   📊 Current custom entries:', customEntries);
+    
     const updatedEntry: JournalEntry = {
       day: formData.day,
       date: formData.date.toLocaleDateString('fr-FR', { 
@@ -121,18 +143,26 @@ const Journal = () => {
       link: formData.link || undefined,
     };
 
+    console.log('✨ Created updated entry:', updatedEntry);
+
     // Check if editing an existing custom entry or creating a new one from default
     const existingCustomIndex = customEntries.findIndex(entry => entry.day === editingEntry!.day);
+    console.log(`🔍 Looking for existing entry for day ${editingEntry!.day}:`, existingCustomIndex);
+    
     let updatedEntries: JournalEntry[];
     
     if (existingCustomIndex >= 0) {
       // Update existing custom entry
+      console.log('📝 Updating existing custom entry at index:', existingCustomIndex);
       updatedEntries = [...customEntries];
       updatedEntries[existingCustomIndex] = updatedEntry;
     } else {
       // Create new custom entry (was originally a default entry)
+      console.log('🆕 Creating new custom entry from default');
       updatedEntries = [...customEntries, updatedEntry];
     }
+
+    console.log('📦 Final updated entries array:', updatedEntries);
 
     setCustomEntries(updatedEntries);
     saveToLocalStorage(updatedEntries);
