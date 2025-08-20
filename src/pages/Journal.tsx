@@ -175,6 +175,10 @@ const Journal = () => {
                 <Button 
                   size="lg" 
                   className="w-full md:w-auto mx-auto flex items-center gap-2 text-lg py-6 px-8 shadow-elegant hover:shadow-premium transition-all duration-300"
+                  onClick={() => {
+                    setEditingEntry(null);
+                    setIsFormOpen(true);
+                  }}
                 >
                   <Plus className="w-5 h-5" />
                   Ajouter une nouvelle entrée
@@ -186,11 +190,14 @@ const Journal = () => {
                     {editingEntry ? "Modifier l'entrée de journal" : "Nouvelle entrée de journal"}
                   </DialogTitle>
                 </DialogHeader>
-                <AddJournalEntryForm 
-                  onSubmit={editingEntry ? handleEditEntry : handleAddEntry}
-                  onCancel={closeDialog}
-                  editEntry={editingEntry || undefined}
-                />
+                {isFormOpen && (
+                  <AddJournalEntryForm 
+                    key={editingEntry?.day || 'new'}
+                    onSubmit={editingEntry ? handleEditEntry : handleAddEntry}
+                    onCancel={closeDialog}
+                    editEntry={editingEntry || undefined}
+                  />
+                )}
               </DialogContent>
             </Dialog>
           </div>
