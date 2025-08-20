@@ -36,6 +36,16 @@ type JournalEntryFormData = z.infer<typeof journalEntrySchema>;
 interface AddJournalEntryFormProps {
   onSubmit: (entry: JournalEntryFormData) => void;
   onCancel: () => void;
+  editEntry?: {
+    day: number;
+    date: string;
+    title: string;
+    location: string;
+    story: string;
+    mood: string;
+    photos?: string[];
+    link?: string;
+  };
 }
 
 const MOOD_OPTIONS = [
@@ -53,20 +63,22 @@ const MOOD_OPTIONS = [
 export const AddJournalEntryForm: React.FC<AddJournalEntryFormProps> = ({
   onSubmit,
   onCancel,
+  editEntry,
 }) => {
   const [showPreview, setShowPreview] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<string[]>(editEntry?.photos || []);
 
   const form = useForm<JournalEntryFormData>({
     resolver: zodResolver(journalEntrySchema),
     defaultValues: {
-      day: 1,
-      title: "",
-      location: "",
-      story: "",
-      mood: "",
-      link: "",
-      photos: [],
+      day: editEntry?.day || 1,
+      date: editEntry?.date ? new Date(editEntry.date) : undefined,
+      title: editEntry?.title || "",
+      location: editEntry?.location || "",
+      story: editEntry?.story || "",
+      mood: editEntry?.mood || "",
+      link: editEntry?.link || "",
+      photos: editEntry?.photos || [],
     },
   });
 
@@ -121,7 +133,7 @@ export const AddJournalEntryForm: React.FC<AddJournalEntryFormProps> = ({
 
   const handleSubmit = (data: JournalEntryFormData) => {
     onSubmit(data);
-    toast.success("Entrée de journal ajoutée !");
+    toast.success(editEntry ? "Entrée modifiée avec succès !" : "Entrée de journal ajoutée !");
   };
 
   return (
@@ -129,9 +141,11 @@ export const AddJournalEntryForm: React.FC<AddJournalEntryFormProps> = ({
       {/* Form Section */}
       <Card className="shadow-elegant">
         <CardHeader>
-          <CardTitle className="font-serif text-2xl">Nouvelle entrée de journal</CardTitle>
+          <CardTitle className="font-serif text-2xl">
+            {editEntry ? "Modifier l'entrée de journal" : "Nouvelle entrée de journal"}
+          </CardTitle>
           <CardDescription>
-            Partagez votre expérience de voyage
+            {editEntry ? "Modifiez votre expérience de voyage" : "Partagez votre expérience de voyage"}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -217,7 +231,7 @@ export const AddJournalEntryForm: React.FC<AddJournalEntryFormProps> = ({
             {/* Mood Selection */}
             <div className="space-y-2">
               <Label>Humeur du jour</Label>
-              <Select onValueChange={(value) => form.setValue("mood", value)}>
+              <Select onValueChange={(value) => form.setValue("mood", value)} value={watchedValues.mood}>
                 <SelectTrigger>
                   <SelectValue placeholder="Choisir votre humeur" />
                 </SelectTrigger>
@@ -337,7 +351,7 @@ export const AddJournalEntryForm: React.FC<AddJournalEntryFormProps> = ({
                 Annuler
               </Button>
               <Button type="submit" className="flex-1">
-                Ajouter l'entrée
+                {editEntry ? "Sauvegarder les modifications" : "Ajouter l'entrée"}
               </Button>
             </div>
           </form>

@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Header } from "@/components/Header";
 import { CulturalNote } from "@/components/CulturalNote";
 import { AddJournalEntryForm } from "@/components/AddJournalEntryForm";
-import { Plus } from "lucide-react";
+import { Plus, Edit3 } from "lucide-react";
 import { useState, useEffect } from "react";
 
 type JournalEntry = {
@@ -22,6 +22,7 @@ type JournalEntry = {
 const Journal = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [customEntries, setCustomEntries] = useState<JournalEntry[]>([]);
+  const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
 
   // Load custom entries from localStorage on mount
   useEffect(() => {
@@ -62,8 +63,25 @@ const Journal = () => {
     }
   ];
 
-  // Combine default and custom entries, sort by day
-  const allEntries = [...defaultEntries, ...customEntries].sort((a, b) => a.day - b.day);
+  // Combine default and custom entries, prioritizing custom ones for same day, sort by day
+  const mergeEntries = () => {
+    const merged: JournalEntry[] = [];
+    const customDays = new Set(customEntries.map(entry => entry.day));
+    
+    // Add all custom entries first
+    merged.push(...customEntries);
+    
+    // Add default entries only if no custom entry exists for that day
+    defaultEntries.forEach(defaultEntry => {
+      if (!customDays.has(defaultEntry.day)) {
+        merged.push(defaultEntry);
+      }
+    });
+    
+    return merged.sort((a, b) => a.day - b.day);
+  };
+  
+  const allEntries = mergeEntries();
 
   const handleAddEntry = (formData: any) => {
     const newEntry: JournalEntry = {
@@ -87,6 +105,51 @@ const Journal = () => {
     setIsFormOpen(false);
   };
 
+  const handleEditEntry = (formData: any) => {
+    const updatedEntry: JournalEntry = {
+      day: formData.day,
+      date: formData.date.toLocaleDateString('fr-FR', { 
+        day: 'numeric', 
+        month: 'long', 
+        year: 'numeric' 
+      }),
+      title: formData.title,
+      location: formData.location,
+      story: formData.story,
+      mood: formData.mood,
+      photos: formData.photos || [],
+      link: formData.link || undefined,
+    };
+
+    // Check if editing an existing custom entry or creating a new one from default
+    const existingCustomIndex = customEntries.findIndex(entry => entry.day === editingEntry!.day);
+    let updatedEntries: JournalEntry[];
+    
+    if (existingCustomIndex >= 0) {
+      // Update existing custom entry
+      updatedEntries = [...customEntries];
+      updatedEntries[existingCustomIndex] = updatedEntry;
+    } else {
+      // Create new custom entry (was originally a default entry)
+      updatedEntries = [...customEntries, updatedEntry];
+    }
+
+    setCustomEntries(updatedEntries);
+    saveToLocalStorage(updatedEntries);
+    setEditingEntry(null);
+    setIsFormOpen(false);
+  };
+
+  const openEditDialog = (entry: JournalEntry) => {
+    setEditingEntry(entry);
+    setIsFormOpen(true);
+  };
+
+  const closeDialog = () => {
+    setIsFormOpen(false);
+    setEditingEntry(null);
+  };
+
   return (
     <>
       <Header />
@@ -107,7 +170,7 @@ const Journal = () => {
         <div className="container mx-auto px-4 py-16">
           {/* Add Entry Button */}
           <div className="max-w-4xl mx-auto mb-8">
-            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+            <Dialog open={isFormOpen} onOpenChange={closeDialog}>
               <DialogTrigger asChild>
                 <Button 
                   size="lg" 
@@ -119,11 +182,14 @@ const Journal = () => {
               </DialogTrigger>
               <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle className="font-serif text-2xl">Nouvelle entrée de journal</DialogTitle>
+                  <DialogTitle className="font-serif text-2xl">
+                    {editingEntry ? "Modifier l'entrée de journal" : "Nouvelle entrée de journal"}
+                  </DialogTitle>
                 </DialogHeader>
                 <AddJournalEntryForm 
-                  onSubmit={handleAddEntry}
-                  onCancel={() => setIsFormOpen(false)}
+                  onSubmit={editingEntry ? handleEditEntry : handleAddEntry}
+                  onCancel={closeDialog}
+                  editEntry={editingEntry || undefined}
                 />
               </DialogContent>
             </Dialog>
@@ -134,17 +200,32 @@ const Journal = () => {
               <Card key={entry.day} className="shadow-elegant hover:shadow-premium transition-all duration-300 border-0 bg-gradient-to-br from-card via-card/95 to-card/90">
                 <CardHeader className="pb-4">
                   <div className="flex justify-between items-start">
-                    <div>
+                    <div className="flex-1">
                       <CardTitle className="font-serif text-3xl mb-3 text-foreground tracking-wide">
                         Jour {entry.day} — {entry.title}
+                        {customEntries.some(custom => custom.day === entry.day) && (
+                          <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-1 rounded-full font-normal">
+                            Modifié
+                          </span>
+                        )}
                       </CardTitle>
                       <CardDescription className="text-lg text-muted-foreground font-light">
                         {entry.date} • {entry.location}
                       </CardDescription>
                     </div>
-                    <Badge variant="secondary" className="ml-4 px-3 py-1 font-light tracking-wide">
-                      {entry.mood}
-                    </Badge>
+                    <div className="flex items-center gap-2 ml-4">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openEditDialog(entry)}
+                        className="p-2 h-auto text-muted-foreground hover:text-foreground"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </Button>
+                      <Badge variant="secondary" className="px-3 py-1 font-light tracking-wide">
+                        {entry.mood}
+                      </Badge>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="pt-0">
