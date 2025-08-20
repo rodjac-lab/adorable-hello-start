@@ -4,6 +4,43 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+
+// Function to parse French date format like "15 mars 2024"
+const parseFrenchDate = (dateString: string): Date | undefined => {
+  if (!dateString) return undefined;
+  
+  try {
+    // If it's already a valid date string, parse it directly
+    const directParse = new Date(dateString);
+    if (!isNaN(directParse.getTime())) {
+      return directParse;
+    }
+    
+    // Parse French format "15 mars 2024"
+    const frenchMonths: { [key: string]: number } = {
+      'janvier': 0, 'février': 1, 'mars': 2, 'avril': 3, 'mai': 4, 'juin': 5,
+      'juillet': 6, 'août': 7, 'septembre': 8, 'octobre': 9, 'novembre': 10, 'décembre': 11
+    };
+    
+    const parts = dateString.trim().split(' ');
+    if (parts.length === 3) {
+      const day = parseInt(parts[0], 10);
+      const monthName = parts[1].toLowerCase();
+      const year = parseInt(parts[2], 10);
+      
+      const monthIndex = frenchMonths[monthName];
+      if (monthIndex !== undefined && !isNaN(day) && !isNaN(year)) {
+        return new Date(year, monthIndex, day);
+      }
+    }
+    
+    console.warn('Failed to parse French date:', dateString);
+    return undefined;
+  } catch (error) {
+    console.error('Error parsing date:', dateString, error);
+    return undefined;
+  }
+};
 import { CalendarIcon, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -72,7 +109,7 @@ export const AddJournalEntryForm: React.FC<AddJournalEntryFormProps> = ({
     resolver: zodResolver(journalEntrySchema),
     defaultValues: {
       day: editEntry?.day || 1,
-      date: editEntry?.date ? new Date(editEntry.date) : undefined,
+      date: editEntry?.date ? parseFrenchDate(editEntry.date) : undefined,
       title: editEntry?.title || "",
       location: editEntry?.location || "",
       story: editEntry?.story || "",
