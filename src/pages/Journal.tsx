@@ -194,6 +194,28 @@ const Journal = () => {
                     </CulturalNote>
                   )}
                   
+                  {/* Photos for custom entries */}
+                  {entry.photos && entry.photos.length > 0 && !defaultEntries.some(defaultEntry => defaultEntry.day === entry.day) && (
+                    <div className="mt-6">
+                      <h4 className="font-semibold mb-3 text-lg">📸 Photos</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {entry.photos.map((photo, index) => (
+                          <div key={`${photo}-${index}`} className="rounded-lg overflow-hidden shadow-md">
+                            <img 
+                              src={photo} 
+                              alt={`Photo ${index + 1}`}
+                              className="w-full h-48 object-cover"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Cultural Note for Jerash */}
                   {entry.day === 2 && (
                     <CulturalNote 

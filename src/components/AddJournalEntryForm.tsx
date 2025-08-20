@@ -76,14 +76,33 @@ export const AddJournalEntryForm: React.FC<AddJournalEntryFormProps> = ({
     const files = event.target.files;
     if (!files) return;
 
-    // In a real app, you would upload to your server/cloud storage
-    // For now, we'll simulate the upload and store file names
     const newFiles: string[] = [];
     
     for (const file of Array.from(files)) {
-      // Simulate uploaded file path
-      const fileName = `uploaded-${Date.now()}-${file.name}`;
-      newFiles.push(fileName);
+      try {
+        // Create FormData to upload file
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        // Upload to lovable-uploads directory
+        const response = await fetch('/api/upload', {
+          method: 'POST', 
+          body: formData,
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          newFiles.push(result.path || `/lovable-uploads/${file.name}`);
+        } else {
+          // Fallback to local file URL for preview
+          const fileUrl = URL.createObjectURL(file);
+          newFiles.push(fileUrl);
+        }
+      } catch (error) {
+        // Fallback to local file URL for preview
+        const fileUrl = URL.createObjectURL(file);
+        newFiles.push(fileUrl);
+      }
     }
 
     setUploadedFiles([...uploadedFiles, ...newFiles]);
@@ -271,19 +290,29 @@ export const AddJournalEntryForm: React.FC<AddJournalEntryFormProps> = ({
 
               {/* Uploaded Photos */}
               {uploadedFiles.length > 0 && (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <p className="text-sm font-medium">Photos ajoutées :</p>
-                  <div className="flex flex-wrap gap-2">
-                    {uploadedFiles.map((file) => (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {uploadedFiles.map((file, index) => (
                       <div
-                        key={file}
-                        className="flex items-center gap-2 bg-muted/50 rounded-md px-3 py-1"
+                        key={`${file}-${index}`}
+                        className="relative group"
                       >
-                        <span className="text-sm truncate max-w-[200px]">{file}</span>
+                        <div className="aspect-square rounded-lg overflow-hidden bg-muted">
+                          <img 
+                            src={file} 
+                            alt={`Photo ${index + 1}`}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                            }}
+                          />
+                        </div>
                         <button
                           type="button"
                           onClick={() => removePhoto(file)}
-                          className="text-muted-foreground hover:text-destructive"
+                          className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs hover:bg-destructive/80 transition-colors"
                         >
                           <X className="h-3 w-3" />
                         </button>
@@ -345,6 +374,28 @@ export const AddJournalEntryForm: React.FC<AddJournalEntryFormProps> = ({
               </p>
             </div>
             
+            {/* Photos in preview */}
+            {watchedValues.photos && watchedValues.photos.length > 0 && (
+              <div className="mt-6">
+                <h4 className="font-semibold mb-3 text-lg">📸 Photos</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {watchedValues.photos.map((photo, index) => (
+                    <div key={`preview-${photo}-${index}`} className="rounded-lg overflow-hidden shadow-md">
+                      <img 
+                        src={photo} 
+                        alt={`Photo ${index + 1}`}
+                        className="w-full h-48 object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {watchedValues.link && (
               <div className="mt-4">
                 <a 
