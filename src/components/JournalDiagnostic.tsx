@@ -65,6 +65,16 @@ export const JournalDiagnostic: React.FC = () => {
     }
   };
 
+  const handleRecover = () => {
+    const recoveredEntries = diagnosticTools.recoverFromBackup();
+    if (recoveredEntries.length > 0) {
+      toast.success(`Récupération réussie: ${recoveredEntries.length} entrées`);
+      runDiagnostic();
+    } else {
+      toast.error('Aucune donnée à récupérer');
+    }
+  };
+
   return (
     <Card className="w-full max-w-4xl mx-auto">
       <CardHeader>
@@ -107,7 +117,7 @@ export const JournalDiagnostic: React.FC = () => {
                   </Card>
                   <Card>
                     <CardContent className="p-4">
-                      <Badge variant={diagnosticData.stats.storageVersion === '2.0' ? 'default' : 'secondary'}>
+                      <Badge variant={diagnosticData.stats.storageVersion === '2.1' ? 'default' : 'secondary'}>
                         v{diagnosticData.stats.storageVersion}
                       </Badge>
                       <div className="text-sm text-muted-foreground">Version</div>
@@ -233,6 +243,15 @@ export const JournalDiagnostic: React.FC = () => {
                   >
                     <RefreshCw className="w-4 h-4" />
                     Forcer la migration
+                  </Button>
+
+                  <Button 
+                    onClick={handleRecover} 
+                    variant="secondary"
+                    className="flex items-center gap-2"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Récupérer depuis les backups
                   </Button>
                   
                   <Button 

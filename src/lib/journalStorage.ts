@@ -13,7 +13,7 @@ const STORAGE_KEY = 'journalEntries';
 const BACKUP_KEY = 'journalEntries_backup';
 const BACKUP_2_KEY = 'journalEntries_backup2';
 const VERSION_KEY = 'journalStorage_version';
-const CURRENT_VERSION = '2.0';
+const CURRENT_VERSION = '2.1';
 
 // Migration des jours 1 et 2 depuis le code vers le système unifié
 const LEGACY_ENTRIES: JournalEntry[] = [
@@ -73,7 +73,7 @@ const runMigration = (): void => {
 };
 
 /**
- * Convertit blob URLs en base64 pour la persistance
+ * Convertit blob URLs en base64 pour la persistance et nettoie les photos manquantes
  */
 const convertBlobsToBase64 = async (entries: JournalEntry[]): Promise<JournalEntry[]> => {
   const processedEntries = await Promise.all(
@@ -84,8 +84,14 @@ const convertBlobsToBase64 = async (entries: JournalEntry[]): Promise<JournalEnt
 
       const processedPhotos = await Promise.all(
         entry.photos.map(async (photo) => {
-          // Si c'est déjà une URL standard, la garder
+          // Si c'est déjà une base64, la garder
+          if (photo.startsWith('data:')) {
+            return photo;
+          }
+
+          // Si c'est une URL normale (pas blob), la garder mais noter si elle est accessible
           if (!photo.startsWith('blob:')) {
+            // Pour les URLs normales, on les garde mais on peut ajouter une validation plus tard
             return photo;
           }
 
@@ -97,18 +103,34 @@ const convertBlobsToBase64 = async (entries: JournalEntry[]): Promise<JournalEnt
             return new Promise<string>((resolve) => {
               const reader = new FileReader();
               reader.onloadend = () => {
-                resolve(reader.result as string);
+                const result = reader.result as string;
+                console.log(`✅ Converted blob to base64 (${Math.round(result.length / 1024)}KB)`);
+                resolve(result);
+              };
+              reader.onerror = () => {
+                console.warn('⚠️ Failed to read blob:', photo);
+                resolve(null);
               };
               reader.readAsDataURL(blob);
             });
           } catch (error) {
             console.warn('⚠️ Failed to convert blob to base64:', photo, error);
-            return photo; // Garder l'original en cas d'erreur
+            return null; // Supprimer les photos corrompues
           }
         })
       );
 
-      return { ...entry, photos: processedPhotos };
+      // Filtrer les photos nulles (corrompues ou manquantes)
+      const validPhotos = processedPhotos.filter(photo => photo !== null) as string[];
+      
+      if (validPhotos.length !== entry.photos.length) {
+        console.warn(`⚠️ Removed ${entry.photos.length - validPhotos.length} invalid photos from day ${entry.day}`);
+      }
+      
+      return {
+        ...entry,
+        photos: validPhotos
+      };
     })
   );
 
@@ -116,62 +138,69 @@ const convertBlobsToBase64 = async (entries: JournalEntry[]): Promise<JournalEnt
 };
 
 /**
- * Sauvegarde sécurisée avec backup triple et conversion base64
+ * Sauvegarde sécurisée avec triple backup et validation renforcée
  */
 export const saveJournalEntries = async (entries: JournalEntry[]): Promise<boolean> => {
   try {
-    console.log('💾 Starting secure save process...');
+    console.log(`💾 Saving ${entries.length} entries...`);
+    console.log('📝 Entries to save:', entries.map(e => `Day ${e.day}: ${e.title}`));
     
-    // Validation des données
+    // Validation des données avant sauvegarde
     if (!Array.isArray(entries)) {
-      console.error('❌ Invalid data type for entries:', typeof entries);
+      console.error('❌ Invalid entries format (not array)');
       return false;
     }
 
-    // Validation de chaque entrée
-    const validEntries = entries.filter(entry => {
+    // Validation détaillée de chaque entrée
+    const validatedEntries = entries.filter(entry => {
       const isValid = entry && 
         typeof entry.day === 'number' && 
         typeof entry.title === 'string' && 
-        typeof entry.date === 'string';
+        typeof entry.date === 'string' &&
+        typeof entry.location === 'string' &&
+        typeof entry.story === 'string' &&
+        typeof entry.mood === 'string';
       
       if (!isValid) {
-        console.warn('⚠️ Invalid entry found:', entry);
+        console.warn('⚠️ Skipping invalid entry:', entry);
       }
       return isValid;
     });
 
-    if (validEntries.length !== entries.length) {
-      console.warn(`⚠️ Filtered ${entries.length - validEntries.length} invalid entries`);
-    }
-
-    // Convertir les blobs en base64 pour la persistance
-    const persistentEntries = await convertBlobsToBase64(validEntries);
-
-    // Triple backup avant modification
-    const current = localStorage.getItem(STORAGE_KEY);
-    const backup1 = localStorage.getItem(BACKUP_KEY);
-    
-    if (current) {
-      localStorage.setItem(BACKUP_2_KEY, backup1 || '');
-      localStorage.setItem(BACKUP_KEY, current);
-      console.log('💾 Created triple backup');
-    }
-
-    // Sauvegarde des nouvelles données
-    const dataToSave = JSON.stringify(persistentEntries);
-    localStorage.setItem(STORAGE_KEY, dataToSave);
-    
-    // Vérification de la sauvegarde
-    const verification = localStorage.getItem(STORAGE_KEY);
-    const success = verification === dataToSave;
-    
-    if (success) {
-      console.log('✅ Successfully saved entries with base64 photos:', persistentEntries.length);
-    } else {
-      console.error('❌ Save verification failed');
+    if (validatedEntries.length === 0) {
+      console.warn('⚠️ No valid entries to save');
       return false;
     }
+
+    // Convertir les blob URLs en base64 pour la persistance
+    const processedEntries = await convertBlobsToBase64(validatedEntries);
+    console.log('🔄 Processed photos for persistence');
+
+    // Trier par jour avant de sauvegarder
+    processedEntries.sort((a, b) => a.day - b.day);
+
+    const dataToSave = JSON.stringify(processedEntries);
+    console.log(`📊 Data size: ${dataToSave.length} characters`);
+
+    // Créer des backups avant de sauvegarder - TOUJOURS conserver les backups existants
+    const currentData = localStorage.getItem(STORAGE_KEY);
+    if (currentData && currentData !== dataToSave) {
+      // Ne décaler les backups que si les données changent réellement
+      const currentBackup1 = localStorage.getItem(BACKUP_KEY);
+      if (currentBackup1) {
+        localStorage.setItem(BACKUP_2_KEY, currentBackup1);
+      }
+      localStorage.setItem(BACKUP_KEY, currentData);
+      console.log('💾 Created backups (data changed)');
+    } else if (!currentData) {
+      console.log('💾 No previous data, creating initial backup');
+    } else {
+      console.log('💾 Data unchanged, skipping backup rotation');
+    }
+
+    // Sauvegarder les nouvelles données
+    localStorage.setItem(STORAGE_KEY, dataToSave);
+    console.log('✅ Journal entries saved successfully');
 
     return true;
   } catch (error) {
@@ -413,6 +442,11 @@ export const diagnosticTools = {
     });
     runMigration();
     return loadJournalEntries();
+  },
+
+  // Restaurer depuis les backups
+  recoverFromBackup: () => {
+    return recoverFromBackup();
   },
 
   // Exporter toutes les données
