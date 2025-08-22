@@ -32,6 +32,32 @@ const Map = () => {
   });
   console.log('📝 Journal entries in Map:', allEntries);
 
+  // Test function pour vérifier le géocodage sans API
+  const testGeocoding = async () => {
+    alert('🧪 TEST: Géocodage avec données locales uniquement');
+    
+    const testLocations: MapLocation[] = [
+      {
+        name: 'Amman',
+        coordinates: [31.9539, 35.9106],
+        type: 'principal',
+        day: 1,
+        journalEntry: allEntries[0]
+      },
+      {
+        name: 'Jerash', 
+        coordinates: [32.2811, 35.8998],
+        type: 'secondaire',
+        day: 2,
+        journalEntry: allEntries[1] || allEntries[0]
+      }
+    ];
+    
+    console.log('🎯 Test locations:', testLocations);
+    setPendingLocations(testLocations);
+    setShowValidationModal(true);
+  };
+
   const handleGeocode = async () => {
     console.log('🗺️ Starting geocoding process...');
     console.log('📍 Token length:', mapboxToken.length);
@@ -112,7 +138,7 @@ const Map = () => {
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
         style: 'mapbox://styles/mapbox/light-v11',
-        center: [35.9106, 31.9539], // Centered on Amman
+        center: [31.9539, 35.9106], // Centered on Amman [latitude, longitude]
         zoom: 7
       });
 
@@ -281,6 +307,14 @@ const Map = () => {
               className="w-full"
             >
               {isGeocoding ? 'Géocodage en cours...' : 'Analyser les lieux du journal'}
+            </Button>
+            <Button 
+              onClick={testGeocoding}
+              disabled={allEntries.length === 0}
+              variant="outline"
+              className="w-full"
+            >
+              🧪 Test avec données locales
             </Button>
             {allEntries.length === 0 && (
               <p className="text-sm text-muted-foreground text-center">
