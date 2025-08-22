@@ -23,6 +23,15 @@ const Map = () => {
 
   const { allEntries } = useJournalEntries();
 
+  // DEBUGGING: Logs pour diagnostiquer le problème
+  console.log('🎯 Map component render:', { 
+    allEntriesCount: allEntries.length, 
+    mapboxTokenLength: mapboxToken.length,
+    showTokenForm,
+    isGeocoding 
+  });
+  console.log('📝 Journal entries in Map:', allEntries);
+
   const handleGeocode = async () => {
     console.log('🗺️ Starting geocoding process...');
     console.log('📍 Token length:', mapboxToken.length);
