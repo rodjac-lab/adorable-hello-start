@@ -27,7 +27,16 @@ const jordanLocations: Record<string, [number, number]> = {
   'bethany': [35.6714, 31.8269], // Bethany Beyond the Jordan
   'bethabara': [35.6714, 31.8269], // Synonyme de Bethany
   'jordanie': [35.9106, 31.9539], // Par défaut sur Amman
-  'jordan': [35.9106, 31.9539]
+  'jordan': [35.9106, 31.9539],
+  // Expressions géographiques vagues
+  'amman et environ': [35.9106, 31.9539],
+  'environ amman': [35.9106, 31.9539],
+  'région d\'amman': [35.9106, 31.9539],
+  'région de amman': [35.9106, 31.9539],
+  'secteur amman': [35.9106, 31.9539],
+  'périphérie amman': [35.9106, 31.9539],
+  'alentours amman': [35.9106, 31.9539],
+  'zone amman': [35.9106, 31.9539]
 };
 
 export async function geocodeLocation(locationName: string, mapboxToken: string): Promise<GeocodeResult | null> {
@@ -95,7 +104,23 @@ export function parseLocationString(locationString: string): string[] {
     .split(/[,;]/) // Support virgules ET points-virgules
     .map(loc => loc.trim())
     .filter(loc => loc.length > 0)
-    .map(loc => loc.replace(/^(à|en|de|du|des|le|la|les)\s+/i, '')); // Enlever articles français
+    .map(loc => {
+      // Enlever articles français
+      let cleaned = loc.replace(/^(à|en|de|du|des|le|la|les)\s+/i, '');
+      
+      // Gérer les expressions comme "X et environ", "région de X" etc.
+      if (cleaned.includes(' et environ')) {
+        // "Amman et environ" → garde tel quel pour la base de données
+        return cleaned;
+      } else if (cleaned.match(/^(région|secteur|zone|périphérie|alentours)\s+(de\s+)?(.+)/i)) {
+        const match = cleaned.match(/^(région|secteur|zone|périphérie|alentours)\s+(de\s+)?(.+)/i);
+        if (match) {
+          return `région de ${match[3]}`;
+        }
+      }
+      
+      return cleaned;
+    });
 }
 
 export function parseJournalEntries(entries: JournalEntry[]): ParsedLocation[] {
