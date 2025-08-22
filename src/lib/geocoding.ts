@@ -6,37 +6,37 @@ const geocodeCache = new Map<string, [number, number]>();
 
 // Base de données de lieux jordaniens populaires (avec noms français et anglais)
 const jordanLocations: Record<string, [number, number]> = {
-  'amman': [35.9106, 31.9539],
-  'jerash': [35.8998, 32.2811],
-  'ajloun': [35.7519, 32.3326],
-  'ajlun': [35.7519, 32.3326], // Variante orthographique
-  'petra': [35.4444, 30.3285],
-  'wadi rum': [35.4155, 29.5324],
-  'aqaba': [35.0050, 29.5262],
-  'dead sea': [35.5883, 31.5590],
-  'mer morte': [35.5883, 31.5590],
-  'madaba': [35.7933, 31.7169],
-  'mount nebo': [35.7269, 31.7687],
-  'mont nebo': [35.7269, 31.7687],
-  'karak': [35.7058, 31.1804],
-  'irbid': [35.8500, 32.5556],
-  'zarqa': [36.0882, 32.0722],
-  'salt': [35.7278, 32.0389],
-  'mafraq': [36.2076, 32.3434],
-  'tafilah': [35.6044, 30.8373],
-  'bethany': [35.6714, 31.8269], // Bethany Beyond the Jordan
-  'bethabara': [35.6714, 31.8269], // Synonyme de Bethany
-  'jordanie': [35.9106, 31.9539], // Par défaut sur Amman
-  'jordan': [35.9106, 31.9539],
+  'amman': [31.9539, 35.9106],
+  'jerash': [32.2811, 35.8998],
+  'ajloun': [32.3326, 35.7519],
+  'ajlun': [32.3326, 35.7519], // Variante orthographique
+  'petra': [30.3285, 35.4444],
+  'wadi rum': [29.5324, 35.4155],
+  'aqaba': [29.5262, 35.0050],
+  'dead sea': [31.5590, 35.5883],
+  'mer morte': [31.5590, 35.5883],
+  'madaba': [31.7169, 35.7933],
+  'mount nebo': [31.7687, 35.7269],
+  'mont nebo': [31.7687, 35.7269],
+  'karak': [31.1804, 35.7058],
+  'irbid': [32.5556, 35.8500],
+  'zarqa': [32.0722, 36.0882],
+  'salt': [32.0389, 35.7278],
+  'mafraq': [32.3434, 36.2076],
+  'tafilah': [30.8373, 35.6044],
+  'bethany': [31.8269, 35.6714], // Bethany Beyond the Jordan
+  'bethabara': [31.8269, 35.6714], // Synonyme de Bethany
+  'jordanie': [31.9539, 35.9106], // Par défaut sur Amman
+  'jordan': [31.9539, 35.9106],
   // Expressions géographiques vagues
-  'amman et environ': [35.9106, 31.9539],
-  'environ amman': [35.9106, 31.9539],
-  'région d\'amman': [35.9106, 31.9539],
-  'région de amman': [35.9106, 31.9539],
-  'secteur amman': [35.9106, 31.9539],
-  'périphérie amman': [35.9106, 31.9539],
-  'alentours amman': [35.9106, 31.9539],
-  'zone amman': [35.9106, 31.9539]
+  'amman et environ': [31.9539, 35.9106],
+  'environ amman': [31.9539, 35.9106],
+  'région d\'amman': [31.9539, 35.9106],
+  'région de amman': [31.9539, 35.9106],
+  'secteur amman': [31.9539, 35.9106],
+  'périphérie amman': [31.9539, 35.9106],
+  'alentours amman': [31.9539, 35.9106],
+  'zone amman': [31.9539, 35.9106]
 };
 
 export async function geocodeLocation(locationName: string, mapboxToken: string): Promise<GeocodeResult | null> {
