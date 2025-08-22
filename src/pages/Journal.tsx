@@ -112,20 +112,19 @@ const Journal = () => {
 
           {/* Add Entry Button */}
           <div className="max-w-4xl mx-auto mb-8">
+            <Button 
+              size="lg" 
+              className="w-full md:w-auto mx-auto flex items-center gap-2 text-lg py-6 px-8 shadow-elegant hover:shadow-premium transition-all duration-300"
+              onClick={() => {
+                setEditingEntry(null);
+                setIsFormOpen(true);
+              }}
+            >
+              <Plus className="w-5 h-5" />
+              Ajouter une nouvelle entrée
+            </Button>
+            
             <Dialog open={isFormOpen} onOpenChange={closeDialog}>
-              <DialogTrigger asChild>
-                <Button 
-                  size="lg" 
-                  className="w-full md:w-auto mx-auto flex items-center gap-2 text-lg py-6 px-8 shadow-elegant hover:shadow-premium transition-all duration-300"
-                  onClick={() => {
-                    setEditingEntry(null);
-                    setIsFormOpen(true);
-                  }}
-                >
-                  <Plus className="w-5 h-5" />
-                  Ajouter une nouvelle entrée
-                </Button>
-              </DialogTrigger>
               <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle className="font-serif text-2xl">
