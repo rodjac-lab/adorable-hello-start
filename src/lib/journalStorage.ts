@@ -72,6 +72,8 @@ const runMigration = (): void => {
   }
 };
 
+import { compressImageUrl } from './imageCompression';
+
 /**
  * Convertit blob URLs en base64 pour la persistance et nettoie les photos manquantes
  */
@@ -84,38 +86,71 @@ const convertBlobsToBase64 = async (entries: JournalEntry[]): Promise<JournalEnt
 
       const processedPhotos = await Promise.all(
         entry.photos.map(async (photo) => {
-          // Si c'est déjà une base64, la garder
-          if (photo.startsWith('data:')) {
+          // Convertir blob en base64 avec compression
+          if (photo.startsWith('blob:')) {
+            try {
+              const response = await fetch(photo);
+              const blob = await response.blob();
+              
+              return new Promise<string>((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = async () => {
+                  try {
+                    const originalBase64 = reader.result as string;
+                    // Compresser l'image pour réduire la taille
+                    const compressedBase64 = await compressImageUrl(originalBase64, {
+                      maxWidth: 800,
+                      maxHeight: 600,
+                      quality: 0.7,
+                      format: 'jpeg'
+                    });
+                    console.log(`✅ Converted blob to compressed base64 (${Math.round(compressedBase64.length * 0.75 / 1024)}KB)`);
+                    resolve(compressedBase64);
+                  } catch (compressionError) {
+                    console.warn('⚠️ Compression failed, using original:', compressionError);
+                    const base64 = reader.result as string;
+                    console.log(`✅ Converted blob to base64 (${Math.round(base64.length * 0.75 / 1024)}KB)`);
+                    resolve(base64);
+                  }
+                };
+                reader.onerror = () => {
+                  console.warn('⚠️ Failed to read blob:', photo);
+                  resolve(null);
+                };
+                reader.readAsDataURL(blob);
+              });
+            } catch (error) {
+              console.warn('⚠️ Failed to convert blob to base64:', photo, error);
+              return null;
+            }
+          }
+          // Compresser les base64 existants s'ils sont trop gros
+          else if (photo.startsWith('data:')) {
+            if (photo.length > 500000) { // Si > 500KB
+              try {
+                const compressedBase64 = await compressImageUrl(photo, {
+                  maxWidth: 800,
+                  maxHeight: 600,
+                  quality: 0.7,
+                  format: 'jpeg'
+                });
+                console.log(`✅ Compressed existing base64 (${Math.round(compressedBase64.length * 0.75 / 1024)}KB)`);
+                return compressedBase64;
+              } catch (error) {
+                console.warn('⚠️ Could not compress existing base64:', error);
+                return photo;
+              }
+            } else {
+              return photo;
+            }
+          }
+          // Garder les URLs normales
+          else if (photo.startsWith('http')) {
             return photo;
           }
-
-          // Si c'est une URL normale (pas blob), la garder mais noter si elle est accessible
-          if (!photo.startsWith('blob:')) {
-            // Pour les URLs normales, on les garde mais on peut ajouter une validation plus tard
-            return photo;
-          }
-
-          try {
-            // Convertir blob en base64
-            const response = await fetch(photo);
-            const blob = await response.blob();
-            
-            return new Promise<string>((resolve) => {
-              const reader = new FileReader();
-              reader.onloadend = () => {
-                const result = reader.result as string;
-                console.log(`✅ Converted blob to base64 (${Math.round(result.length / 1024)}KB)`);
-                resolve(result);
-              };
-              reader.onerror = () => {
-                console.warn('⚠️ Failed to read blob:', photo);
-                resolve(null);
-              };
-              reader.readAsDataURL(blob);
-            });
-          } catch (error) {
-            console.warn('⚠️ Failed to convert blob to base64:', photo, error);
-            return null; // Supprimer les photos corrompues
+          else {
+            console.warn('⚠️ Unknown photo format:', photo);
+            return null;
           }
         })
       );

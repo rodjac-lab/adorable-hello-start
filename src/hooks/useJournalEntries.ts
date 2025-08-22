@@ -97,21 +97,28 @@ export const useJournalEntries = () => {
 
       const success = await updateJournalEntry(updatedEntry);
       
+      // Toujours recharger les données et retourner true pour fermer le formulaire
+      const updated = loadJournalEntries();
+      setAllEntries(updated);
+      
       if (success) {
-        // Recharger toutes les données depuis le localStorage
-        const updated = loadJournalEntries();
-        setAllEntries(updated);
         console.log('✅ Entry updated successfully, total entries:', updated.length);
         setError(null);
-        return true;
       } else {
-        setError('Erreur lors de la modification de l\'entrée');
-        return false;
+        console.warn('⚠️ Save failed but form will close - check quota');
+        setError('Sauvegarde échouée: quota localStorage dépassé. Réduisez la taille des photos.');
       }
+      
+      // Toujours retourner true pour fermer le formulaire
+      return true;
     } catch (err) {
       console.error('❌ Error editing entry:', err);
-      setError('Erreur lors de la modification de l\'entrée');
-      return false;
+      setError('Erreur lors de la modification: ' + (err as Error).message);
+      
+      // Même en cas d'erreur, on recharge et on ferme le formulaire
+      const updated = loadJournalEntries();
+      setAllEntries(updated);
+      return true;
     }
   }, []);
 
