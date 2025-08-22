@@ -39,10 +39,21 @@ const Map = () => {
   ];
 
   const initializeMap = () => {
-    if (!mapContainer.current || !mapboxToken.trim()) {
-      console.log('Conditions not met for map initialization');
+    if (!mapboxToken.trim()) {
+      console.log('No token provided');
       return;
     }
+    
+    console.log('Token provided, hiding form and preparing container');
+    setShowTokenForm(false);
+    
+    // Wait for the container to be rendered
+    setTimeout(() => {
+      if (!mapContainer.current) {
+        console.error('Map container not found after timeout');
+        setShowTokenForm(true);
+        return;
+      }
 
     console.log('Initializing map with token:', mapboxToken.substring(0, 10) + '...');
     setShowTokenForm(false); // Hide form immediately when starting initialization
@@ -167,6 +178,7 @@ const Map = () => {
       console.error('Erreur lors de l\'initialisation de la carte:', error);
       setShowTokenForm(true); // Show form again on error
     }
+    }, 100); // Wait 100ms for container to be available
   };
 
   useEffect(() => {
