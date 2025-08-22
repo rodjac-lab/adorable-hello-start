@@ -84,7 +84,8 @@ export async function geocodeLocation(locationName: string, mapboxToken: string)
     
     if (data.features && data.features.length > 0) {
       const feature = data.features[0];
-      const coords: [number, number] = [feature.center[0], feature.center[1]];
+      // Mapbox returns [lng, lat] but we store as [lat, lng] for consistency with our interface
+      const coords: [number, number] = [feature.center[1], feature.center[0]];
       
       // Mettre en cache
       geocodeCache.set(cleanName, coords);

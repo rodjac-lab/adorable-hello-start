@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useJournalEntries } from '@/hooks/useJournalEntries';
 import { geocodeJournalEntries } from '@/lib/geocoding';
 import { MapLocation } from '@/types/map';
+import { JournalEntry } from '@/lib/journalStorage';
 import { LocationValidationModal } from './LocationValidationModal';
 
 const Map = () => {
@@ -34,28 +35,54 @@ const Map = () => {
 
   // Test function pour vérifier le géocodage sans API
   const testGeocoding = async () => {
-    alert('🧪 TEST: Géocodage avec données locales uniquement');
+    console.log('🧪 Starting test geocoding...');
     
-    const testLocations: MapLocation[] = [
+    // Créer de fausses entrées de journal réalistes pour la Jordanie
+    const testEntries: JournalEntry[] = [
       {
-        name: 'Amman',
-        coordinates: [31.9539, 35.9106],
-        type: 'principal',
         day: 1,
-        journalEntry: allEntries[0]
+        date: '15 janvier 2024',
+        title: 'Arrivée à Amman',
+        location: 'Amman',
+        story: 'Premier jour en Jordanie, découverte de la capitale.',
+        mood: 'Excité'
       },
       {
-        name: 'Jerash', 
-        coordinates: [32.2811, 35.8998],
-        type: 'secondaire',
         day: 2,
-        journalEntry: allEntries[1] || allEntries[0]
+        date: '16 janvier 2024',
+        title: 'Visite de Jerash',
+        location: 'Jerash, Ajloun',
+        story: 'Exploration des ruines romaines de Jerash puis du château d\'Ajloun.',
+        mood: 'Émerveillé'
+      },
+      {
+        day: 3,
+        date: '17 janvier 2024',
+        title: 'Excursion vers le nord',
+        location: 'Irbid, Salt',
+        story: 'Visite d\'Irbid et de la ville historique de Salt.',
+        mood: 'Curieux'
       }
     ];
+
+    console.log('🧪 Test entries:', testEntries);
+    setIsGeocoding(true);
     
-    console.log('🎯 Test locations:', testLocations);
-    setPendingLocations(testLocations);
-    setShowValidationModal(true);
+    try {
+      const geocodedLocations = await geocodeJournalEntries(testEntries, '', () => {});
+      console.log('🧪 Test geocoded locations:', geocodedLocations);
+      
+      if (geocodedLocations.length > 0) {
+        setShowValidationModal(true);
+        setPendingLocations(geocodedLocations);
+      } else {
+        console.error('🧪 No locations geocoded in test');
+      }
+    } catch (error) {
+      console.error('🧪 Error in test geocoding:', error);
+    } finally {
+      setIsGeocoding(false);
+    }
   };
 
   const handleGeocode = async () => {
@@ -109,10 +136,10 @@ const Map = () => {
   const handleValidateLocations = (validatedLocations: MapLocation[]) => {
     setMapLocations(validatedLocations);
     setShowValidationModal(false);
-    initializeMap();
+    initializeMap(validatedLocations);
   };
 
-  const initializeMap = () => {
+  const initializeMap = (locations: MapLocation[] = mapLocations) => {
     if (!mapboxToken.trim()) {
       console.log('No token provided');
       return;
@@ -138,7 +165,7 @@ const Map = () => {
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
         style: 'mapbox://styles/mapbox/light-v11',
-        center: [31.9539, 35.9106], // Centered on Amman [latitude, longitude]
+        center: [35.9106, 31.9539], // Centered on Amman [longitude, latitude] - Mapbox format
         zoom: 7
       });
 
@@ -149,11 +176,26 @@ const Map = () => {
         console.log('Map loaded successfully');
         if (!map.current) return;
 
+        // Calculate bounds for all locations
+        if (locations.length > 0) {
+          const bounds = new mapboxgl.LngLatBounds();
+          locations.forEach(location => {
+            // IMPORTANT: Mapbox expects [longitude, latitude]
+            bounds.extend([location.coordinates[1], location.coordinates[0]]);
+          });
+
+          // Fit map to bounds with padding
+          map.current.fitBounds(bounds, { 
+            padding: 50,
+            maxZoom: 12
+          });
+        }
+
         // Create a route connecting all locations in chronological order
-        if (mapLocations.length > 1) {
-          const coordinates = mapLocations
+        if (locations.length > 1) {
+          const coordinates = locations
             .sort((a, b) => a.day - b.day)
-            .map(location => location.coordinates);
+            .map(location => [location.coordinates[1], location.coordinates[0]]); // Convert to [lng, lat]
           
           map.current.addSource('route', {
             'type': 'geojson',
@@ -184,7 +226,7 @@ const Map = () => {
         }
 
         // Add markers for each location
-        mapLocations.forEach((location) => {
+        locations.forEach((location) => {
           // Marker colors and sizes based on type
           const isPrincipal = location.type === 'principal';
           const markerColor = isPrincipal ? '#3b82f6' : '#f59e0b'; // Blue for principal, orange for secondary
@@ -239,8 +281,9 @@ const Map = () => {
           `);
 
           // Add marker to map
+          // IMPORTANT: Mapbox expects [longitude, latitude]
           new mapboxgl.Marker(markerElement)
-            .setLngLat(location.coordinates)
+            .setLngLat([location.coordinates[1], location.coordinates[0]])
             .setPopup(popup)
             .addTo(map.current!);
         });
