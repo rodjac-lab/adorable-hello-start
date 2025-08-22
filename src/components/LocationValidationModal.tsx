@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MapLocation } from '@/types/map';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -21,9 +21,15 @@ export const LocationValidationModal: React.FC<LocationValidationModalProps> = (
   onValidate,
   onCancel
 }) => {
-  const [editedLocations, setEditedLocations] = useState<MapLocation[]>(locations);
+  const [editedLocations, setEditedLocations] = useState<MapLocation[]>([]);
   const [newLocationName, setNewLocationName] = useState('');
   const [newLocationType, setNewLocationType] = useState<'principal' | 'secondaire'>('secondaire');
+
+  // CORRECTIF: Mettre à jour editedLocations quand locations change
+  useEffect(() => {
+    console.log('📍 LocationValidationModal received locations:', locations);
+    setEditedLocations(locations);
+  }, [locations]);
 
   const updateLocation = (index: number, updates: Partial<MapLocation>) => {
     setEditedLocations(prev => 
@@ -44,7 +50,7 @@ export const LocationValidationModal: React.FC<LocationValidationModalProps> = (
 
     const newLocation: MapLocation = {
       name: newLocationName.trim(),
-      coordinates: [35.9106, 31.9539], // Coordonnées par défaut (Amman)
+      coordinates: [31.9539, 35.9106], // Coordonnées par défaut (Amman) [lat, lng]
       type: newLocationType,
       day: baseEntry.day,
       journalEntry: baseEntry
@@ -124,7 +130,7 @@ export const LocationValidationModal: React.FC<LocationValidationModalProps> = (
                             </Badge>
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            Coordonnées: {location.coordinates[1].toFixed(4)}, {location.coordinates[0].toFixed(4)}
+                            Coordonnées: {location.coordinates[0].toFixed(4)}, {location.coordinates[1].toFixed(4)} (lat, lng)
                           </div>
                         </div>
                         <Button
