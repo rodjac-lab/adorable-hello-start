@@ -5,7 +5,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Header } from "@/components/Header";
 import { CulturalNote } from "@/components/CulturalNote";
 import { AddJournalEntryForm } from "@/components/AddJournalEntryForm";
-import { Plus, Edit3, RefreshCw, Expand } from "lucide-react";
+import { JournalDiagnostic } from "@/components/JournalDiagnostic";
+import { Plus, Edit3, RefreshCw, Expand, Settings } from "lucide-react";
 import { useState } from "react";
 import { useJournalEntries } from "@/hooks/useJournalEntries";
 import { JournalEntry } from "@/lib/journalStorage";
@@ -14,6 +15,7 @@ const Journal = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+  const [showDiagnostic, setShowDiagnostic] = useState(false);
   
   const { 
     allEntries, 
@@ -26,17 +28,17 @@ const Journal = () => {
     reloadEntries 
   } = useJournalEntries();
 
-  const handleAddEntry = (formData: any) => {
-    const success = addEntry(formData);
+  const handleAddEntry = async (formData: any) => {
+    const success = await addEntry(formData);
     if (success) {
       setIsFormOpen(false);
     }
   };
 
-  const handleEditEntry = (formData: any) => {
+  const handleEditEntry = async (formData: any) => {
     if (!editingEntry) return;
     
-    const success = editEntry(formData, editingEntry.day);
+    const success = await editEntry(formData, editingEntry.day);
     if (success) {
       setEditingEntry(null);
       setIsFormOpen(false);
@@ -102,14 +104,32 @@ const Journal = () => {
           )}
 
           {/* Debug Info */}
-          <div className="max-w-4xl mx-auto mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <h3 className="font-semibold mb-2">📊 Statistiques Debug</h3>
-            <div className="text-sm text-gray-700">
-              <p>Entrées personnalisées: {customEntries.length}</p>
+          <div className="max-w-4xl mx-auto mb-6 p-4 bg-muted/50 rounded-lg">
+            <div className="flex justify-between items-start mb-2">
+              <h3 className="font-semibold">📊 Statistiques Debug</h3>
+              <Button 
+                onClick={() => setShowDiagnostic(!showDiagnostic)}
+                variant="outline" 
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <Settings className="w-4 h-4" />
+                {showDiagnostic ? 'Masquer' : 'Diagnostic'}
+              </Button>
+            </div>
+            <div className="text-sm space-y-1">
               <p>Total affiché: {allEntries.length}</p>
               <p>Jours: {getStats().days.join(', ')}</p>
+              <p>Version: {getStats().storageVersion}</p>
             </div>
           </div>
+
+          {/* Diagnostic Panel */}
+          {showDiagnostic && (
+            <div className="max-w-4xl mx-auto mb-6">
+              <JournalDiagnostic />
+            </div>
+          )}
 
           {/* Add Entry Button */}
           <div className="max-w-4xl mx-auto mb-8">
