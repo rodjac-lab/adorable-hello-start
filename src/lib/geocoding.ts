@@ -125,32 +125,49 @@ export async function geocodeJournalEntries(
   mapboxToken: string,
   onProgress?: (current: number, total: number) => void
 ): Promise<MapLocation[]> {
+  console.log('🔄 Starting geocoding for', entries.length, 'journal entries');
+  
   const parsedEntries = parseJournalEntries(entries);
+  console.log('📝 Parsed entries:', parsedEntries);
+  
   const allLocations: MapLocation[] = [];
   let processed = 0;
+  const totalCount = getTotalLocationCount(parsedEntries);
+  
+  console.log('📊 Total locations to process:', totalCount);
 
   for (const parsedEntry of parsedEntries) {
+    console.log(`📍 Processing day ${parsedEntry.day}:`, parsedEntry.parsed);
+    
     const classifiedLocations = classifyLocations(
       parsedEntry.parsed,
       parsedEntry.day,
       parsedEntry.journalEntry
     );
+    
+    console.log('🏷️ Classified locations:', classifiedLocations);
 
     for (const location of classifiedLocations) {
+      console.log(`🔍 Geocoding "${location.name}"...`);
+      
       const geocodeResult = await geocodeLocation(location.name, mapboxToken);
       
       if (geocodeResult) {
+        console.log(`✅ Found coordinates for "${location.name}":`, geocodeResult.coordinates);
         allLocations.push({
           ...location,
           coordinates: geocodeResult.coordinates
         });
+      } else {
+        console.warn(`❌ Failed to geocode "${location.name}"`);
       }
       
       processed++;
-      onProgress?.(processed, getTotalLocationCount(parsedEntries));
+      onProgress?.(processed, totalCount);
     }
   }
 
+  console.log('🏁 Geocoding completed. Total locations found:', allLocations.length);
   return allLocations;
 }
 

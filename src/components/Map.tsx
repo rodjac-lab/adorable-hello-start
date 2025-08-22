@@ -24,15 +24,39 @@ const Map = () => {
   const { allEntries } = useJournalEntries();
 
   const handleGeocode = async () => {
-    if (!mapboxToken.trim() || allEntries.length === 0) return;
+    console.log('🗺️ Starting geocoding process...');
+    console.log('📍 Token length:', mapboxToken.length);
+    console.log('📚 Journal entries count:', allEntries.length);
+    console.log('📝 Entries data:', allEntries.map(e => ({ day: e.day, location: e.location })));
+    
+    if (!mapboxToken.trim()) {
+      console.error('❌ No Mapbox token provided');
+      return;
+    }
+    
+    if (allEntries.length === 0) {
+      console.error('❌ No journal entries found');
+      return;
+    }
     
     setIsGeocoding(true);
     try {
+      console.log('🔄 Calling geocodeJournalEntries...');
       const locations = await geocodeJournalEntries(allEntries, mapboxToken);
+      console.log('✅ Geocoding completed, locations found:', locations.length);
+      console.log('📍 Locations:', locations);
+      
+      if (locations.length === 0) {
+        console.warn('⚠️ No locations were geocoded successfully');
+        alert('Aucun lieu n\'a pu être géocodé. Vérifiez votre token Mapbox et la connectivité réseau.');
+        return;
+      }
+      
       setPendingLocations(locations);
       setShowValidationModal(true);
     } catch (error) {
-      console.error('Erreur lors du géocodage:', error);
+      console.error('❌ Erreur lors du géocodage:', error);
+      alert(`Erreur lors du géocodage: ${error}`);
     } finally {
       setIsGeocoding(false);
     }
