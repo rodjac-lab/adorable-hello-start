@@ -4,23 +4,30 @@ import { MapLocation, GeocodeResult, ParsedLocation } from '@/types/map';
 // Cache pour éviter les re-géocodages
 const geocodeCache = new Map<string, [number, number]>();
 
-// Base de données de lieux jordaniens populaires
+// Base de données de lieux jordaniens populaires (avec noms français et anglais)
 const jordanLocations: Record<string, [number, number]> = {
   'amman': [35.9106, 31.9539],
   'jerash': [35.8998, 32.2811],
   'ajloun': [35.7519, 32.3326],
+  'ajlun': [35.7519, 32.3326], // Variante orthographique
   'petra': [35.4444, 30.3285],
   'wadi rum': [35.4155, 29.5324],
   'aqaba': [35.0050, 29.5262],
   'dead sea': [35.5883, 31.5590],
+  'mer morte': [35.5883, 31.5590],
   'madaba': [35.7933, 31.7169],
   'mount nebo': [35.7269, 31.7687],
+  'mont nebo': [35.7269, 31.7687],
   'karak': [35.7058, 31.1804],
   'irbid': [35.8500, 32.5556],
   'zarqa': [36.0882, 32.0722],
   'salt': [35.7278, 32.0389],
   'mafraq': [36.2076, 32.3434],
-  'tafilah': [35.6044, 30.8373]
+  'tafilah': [35.6044, 30.8373],
+  'bethany': [35.6714, 31.8269], // Bethany Beyond the Jordan
+  'bethabara': [35.6714, 31.8269], // Synonyme de Bethany
+  'jordanie': [35.9106, 31.9539], // Par défaut sur Amman
+  'jordan': [35.9106, 31.9539]
 };
 
 export async function geocodeLocation(locationName: string, mapboxToken: string): Promise<GeocodeResult | null> {
@@ -85,9 +92,10 @@ export async function geocodeLocation(locationName: string, mapboxToken: string)
 
 export function parseLocationString(locationString: string): string[] {
   return locationString
-    .split(',')
+    .split(/[,;]/) // Support virgules ET points-virgules
     .map(loc => loc.trim())
-    .filter(loc => loc.length > 0);
+    .filter(loc => loc.length > 0)
+    .map(loc => loc.replace(/^(à|en|de|du|des|le|la|les)\s+/i, '')); // Enlever articles français
 }
 
 export function parseJournalEntries(entries: JournalEntry[]): ParsedLocation[] {

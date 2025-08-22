@@ -55,13 +55,16 @@ const Map = () => {
       console.log('✅ Geocoding completed, locations found:', locations.length);
       console.log('📍 Locations:', locations);
       
+      console.log('🎯 Geocoding results:', locations);
+      
       if (locations.length === 0) {
         console.warn('⚠️ No locations were geocoded successfully');
-        alert('Aucun lieu n\'a pu être géocodé. Vérifiez votre token Mapbox et la connectivité réseau.');
+        alert('Aucun lieu n\'a pu être géocodé. Vérifiez que vos entrées de journal contiennent des noms de lieux valides.');
         setIsGeocoding(false);
         return;
       }
       
+      console.log(`✅ Success! Found ${locations.length} locations to display on map`);
       setPendingLocations(locations);
       setShowValidationModal(true);
     } catch (error) {
