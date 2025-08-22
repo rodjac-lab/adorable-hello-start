@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { Menu, X, BookOpen, Calendar, Utensils, Camera, BookOpenCheck } from "lucide-react";
+import { Menu, X, BookOpen, Calendar, Utensils, Map, BookOpenCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const navigation = [
   { name: "Journal", href: "/journal", icon: Calendar },
   { name: "Gastronomie", href: "/food", icon: Utensils },
-  { name: "Galerie", href: "/gallery", icon: Camera },
+  { name: "Carte Interactive", href: "/gallery", icon: Map },
   { name: "Lectures", href: "/recommendations", icon: BookOpenCheck },
 ];
 
