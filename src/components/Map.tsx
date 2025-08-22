@@ -11,6 +11,7 @@ const Map = () => {
   const map = useRef<mapboxgl.Map | null>(null);
   const [mapboxToken, setMapboxToken] = useState('');
   const [isMapInitialized, setIsMapInitialized] = useState(false);
+  const [showTokenForm, setShowTokenForm] = useState(true);
 
   // Locations visited in Jordan
   const jordanLocations = [
@@ -148,6 +149,7 @@ const Map = () => {
         }
 
         setIsMapInitialized(true);
+        setShowTokenForm(false);
       });
 
     } catch (error) {
@@ -161,7 +163,7 @@ const Map = () => {
     };
   }, []);
 
-  if (!isMapInitialized && !mapboxToken) {
+  if (showTokenForm && !isMapInitialized) {
     return (
       <div className="w-full max-w-2xl mx-auto p-6">
         <Card>
