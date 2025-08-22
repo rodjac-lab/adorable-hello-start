@@ -41,10 +41,12 @@ const jordanLocations: Record<string, [number, number]> = {
 
 export async function geocodeLocation(locationName: string, mapboxToken: string): Promise<GeocodeResult | null> {
   const cleanName = locationName.toLowerCase().trim();
+  console.log(`🔍 Geocoding "${locationName}" (cleaned: "${cleanName}")`);
   
   // Vérifier le cache d'abord
   if (geocodeCache.has(cleanName)) {
     const coords = geocodeCache.get(cleanName)!;
+    console.log(`💾 Found in cache: ${coords}`);
     return {
       name: locationName,
       coordinates: coords,
@@ -56,6 +58,7 @@ export async function geocodeLocation(locationName: string, mapboxToken: string)
   if (jordanLocations[cleanName]) {
     const coords = jordanLocations[cleanName];
     geocodeCache.set(cleanName, coords);
+    console.log(`🏠 Found in local DB: ${coords}`);
     return {
       name: locationName,
       coordinates: coords,
@@ -93,14 +96,15 @@ export async function geocodeLocation(locationName: string, mapboxToken: string)
       };
     }
   } catch (error) {
-    console.error(`Erreur de géocodage pour "${locationName}":`, error);
+    console.error(`❌ Erreur de géocodage pour "${locationName}":`, error);
   }
 
+  console.log(`❌ No coordinates found for "${locationName}"`);
   return null;
 }
 
 export function parseLocationString(locationString: string): string[] {
-  return locationString
+  const locations = locationString
     .split(/[,;]/) // Support virgules ET points-virgules
     .map(loc => loc.trim())
     .filter(loc => loc.length > 0)
@@ -108,19 +112,14 @@ export function parseLocationString(locationString: string): string[] {
       // Enlever articles français
       let cleaned = loc.replace(/^(à|en|de|du|des|le|la|les)\s+/i, '');
       
-      // Gérer les expressions comme "X et environ", "région de X" etc.
-      if (cleaned.includes(' et environ')) {
-        // "Amman et environ" → garde tel quel pour la base de données
-        return cleaned;
-      } else if (cleaned.match(/^(région|secteur|zone|périphérie|alentours)\s+(de\s+)?(.+)/i)) {
-        const match = cleaned.match(/^(région|secteur|zone|périphérie|alentours)\s+(de\s+)?(.+)/i);
-        if (match) {
-          return `région de ${match[3]}`;
-        }
-      }
+      // Nettoyer les espaces multiples
+      cleaned = cleaned.replace(/\s+/g, ' ').trim();
       
       return cleaned;
     });
+  
+  console.log(`🔍 parseLocationString: "${locationString}" → [${locations.join(', ')}]`);
+  return locations;
 }
 
 export function parseJournalEntries(entries: JournalEntry[]): ParsedLocation[] {
