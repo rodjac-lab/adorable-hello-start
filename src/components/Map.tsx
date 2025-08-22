@@ -39,7 +39,13 @@ const Map = () => {
   ];
 
   const initializeMap = () => {
-    if (!mapContainer.current || !mapboxToken.trim()) return;
+    if (!mapContainer.current || !mapboxToken.trim()) {
+      console.log('Conditions not met for map initialization');
+      return;
+    }
+
+    console.log('Initializing map with token:', mapboxToken.substring(0, 10) + '...');
+    setShowTokenForm(false); // Hide form immediately when starting initialization
 
     try {
       mapboxgl.accessToken = mapboxToken.trim();
@@ -62,6 +68,7 @@ const Map = () => {
       );
 
       map.current.on('load', () => {
+        console.log('Map loaded successfully');
         if (!map.current) return;
 
         // Add markers and route
@@ -149,11 +156,16 @@ const Map = () => {
         }
 
         setIsMapInitialized(true);
-        setShowTokenForm(false);
+      });
+
+      map.current.on('error', (e) => {
+        console.error('Map error:', e);
+        setShowTokenForm(true); // Show form again on error
       });
 
     } catch (error) {
       console.error('Erreur lors de l\'initialisation de la carte:', error);
+      setShowTokenForm(true); // Show form again on error
     }
   };
 
