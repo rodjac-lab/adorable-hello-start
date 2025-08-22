@@ -38,13 +38,18 @@ const Map = () => {
     console.log('📚 Journal entries count:', allEntries.length);
     console.log('📝 Entries data:', allEntries.map(e => ({ day: e.day, location: e.location })));
     
+    // DEBUGGING: Alert visible pour confirmer le démarrage
+    alert(`🚀 DEBUT GEOCODAGE: ${allEntries.length} entrées à traiter`);
+    
     if (!mapboxToken.trim()) {
       console.error('❌ No Mapbox token provided');
+      alert('❌ Token Mapbox manquant!');
       return;
     }
     
     if (allEntries.length === 0) {
       console.error('❌ No journal entries found');
+      alert('❌ Aucune entrée de journal trouvée!');
       return;
     }
     
