@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Header } from "@/components/Header";
 import { CulturalNote } from "@/components/CulturalNote";
 import { AddJournalEntryForm } from "@/components/AddJournalEntryForm";
-import { Plus, Edit3, RefreshCw } from "lucide-react";
+import { Plus, Edit3, RefreshCw, Expand } from "lucide-react";
 import { useState } from "react";
 import { useJournalEntries } from "@/hooks/useJournalEntries";
 import { JournalEntry } from "@/lib/journalStorage";
@@ -13,6 +13,7 @@ import { JournalEntry } from "@/lib/journalStorage";
 const Journal = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   
   const { 
     allEntries, 
@@ -229,16 +230,23 @@ const Journal = () => {
                       <h4 className="font-semibold mb-3 text-lg">📸 Photos</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {entry.photos.map((photo, index) => (
-                          <div key={`${photo}-${index}`} className="rounded-lg overflow-hidden shadow-md">
+                          <div 
+                            key={`${photo}-${index}`} 
+                            className="relative rounded-lg overflow-hidden shadow-md cursor-pointer group hover:shadow-lg transition-all duration-300"
+                            onClick={() => setFullscreenImage(photo)}
+                          >
                             <img 
                               src={photo} 
                               alt={`Photo ${index + 1}`}
-                              className="w-full h-48 object-cover"
+                              className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement;
                                 target.style.display = 'none';
                               }}
                             />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center">
+                              <Expand className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -287,6 +295,29 @@ const Journal = () => {
             </p>
           </div>
         </div>
+
+        {/* Fullscreen Image Dialog */}
+        <Dialog open={!!fullscreenImage} onOpenChange={() => setFullscreenImage(null)}>
+          <DialogContent className="max-w-screen-lg max-h-screen p-0 border-0">
+            <div className="relative">
+              {fullscreenImage && (
+                <img 
+                  src={fullscreenImage} 
+                  alt="Photo en plein écran"
+                  className="w-full h-auto max-h-[90vh] object-contain"
+                />
+              )}
+              <Button
+                variant="secondary"
+                size="sm"
+                className="absolute top-4 right-4 opacity-80 hover:opacity-100"
+                onClick={() => setFullscreenImage(null)}
+              >
+                ✕
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </>
   );
