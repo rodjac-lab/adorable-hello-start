@@ -91,12 +91,20 @@ export function parseLocationString(locationString: string): string[] {
 }
 
 export function parseJournalEntries(entries: JournalEntry[]): ParsedLocation[] {
-  return entries.map(entry => ({
-    original: entry.location,
-    parsed: parseLocationString(entry.location),
-    day: entry.day,
-    journalEntry: entry
-  }));
+  const parsed = entries.map(entry => {
+    const parsedLocations = parseLocationString(entry.location);
+    console.log(`📍 Day ${entry.day} - "${entry.location}" → [${parsedLocations.join(', ')}]`);
+    
+    return {
+      original: entry.location,
+      parsed: parsedLocations,
+      day: entry.day,
+      journalEntry: entry
+    };
+  });
+  
+  console.log('📊 Total locations to geocode:', parsed.reduce((sum, p) => sum + p.parsed.length, 0));
+  return parsed;
 }
 
 export function classifyLocations(parsedLocations: string[], day: number, journalEntry: JournalEntry): Omit<MapLocation, 'coordinates'>[] {
@@ -126,6 +134,12 @@ export async function geocodeJournalEntries(
   onProgress?: (current: number, total: number) => void
 ): Promise<MapLocation[]> {
   console.log('🔄 Starting geocoding for', entries.length, 'journal entries');
+  console.log('📚 Raw entries data:', entries.map(e => ({ day: e.day, location: e.location, title: e.title })));
+  
+  if (entries.length === 0) {
+    console.warn('⚠️ No entries provided for geocoding');
+    return [];
+  }
   
   const parsedEntries = parseJournalEntries(entries);
   console.log('📝 Parsed entries:', parsedEntries);

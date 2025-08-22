@@ -58,6 +58,7 @@ const Map = () => {
       if (locations.length === 0) {
         console.warn('⚠️ No locations were geocoded successfully');
         alert('Aucun lieu n\'a pu être géocodé. Vérifiez votre token Mapbox et la connectivité réseau.');
+        setIsGeocoding(false);
         return;
       }
       
