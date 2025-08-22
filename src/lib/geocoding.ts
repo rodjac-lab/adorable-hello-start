@@ -41,10 +41,12 @@ const jordanLocations: Record<string, [number, number]> = {
 
 export async function geocodeLocation(locationName: string, mapboxToken: string): Promise<GeocodeResult | null> {
   const cleanName = locationName.toLowerCase().trim();
+  console.log(`🔍 Geocoding "${locationName}" → cleaned: "${cleanName}"`);
   
   // Vérifier le cache d'abord
   if (geocodeCache.has(cleanName)) {
     const coords = geocodeCache.get(cleanName)!;
+    console.log(`📋 Found in cache: "${cleanName}" → [${coords[0]}, ${coords[1]}]`);
     return {
       name: locationName,
       coordinates: coords,
@@ -56,12 +58,15 @@ export async function geocodeLocation(locationName: string, mapboxToken: string)
   if (jordanLocations[cleanName]) {
     const coords = jordanLocations[cleanName];
     geocodeCache.set(cleanName, coords);
+    console.log(`🎯 Found in local database: "${cleanName}" → [${coords[0]}, ${coords[1]}]`);
     return {
       name: locationName,
       coordinates: coords,
       confidence: 0.9
     };
   }
+
+  console.log(`❓ Location "${cleanName}" not found in local database. Available locations:`, Object.keys(jordanLocations));
 
   // Utiliser l'API Mapbox Geocoding
   try {
