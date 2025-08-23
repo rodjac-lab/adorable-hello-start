@@ -6,6 +6,7 @@ import { Header } from "@/components/Header";
 import { CulturalNote } from "@/components/CulturalNote";
 import { AddJournalEntryForm } from "@/components/AddJournalEntryForm";
 import { JournalDiagnostic } from "@/components/JournalDiagnostic";
+import DataRecovery from "@/components/DataRecovery";
 import { Plus, Edit3, RefreshCw, Expand, Settings } from "lucide-react";
 import { useState } from "react";
 import { useJournalEntries } from "@/hooks/useJournalEntries";
@@ -100,6 +101,7 @@ const Journal = () => {
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Recharger les données
               </Button>
+              <DataRecovery />
             </div>
           )}
 
