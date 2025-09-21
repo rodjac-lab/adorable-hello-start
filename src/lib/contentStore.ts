@@ -1,3 +1,4 @@
+
 import type { JournalEntry } from '@/lib/journalStorage';
 
 export type ContentSource = 'canonical' | 'custom';
@@ -359,3 +360,4 @@ export const getFoodExperiences = (): FoodExperience[] => {
 export const getReadingRecommendations = (): ReadingRecommendation[] => {
   return [...canonicalReadingRecommendations];
 };
+main

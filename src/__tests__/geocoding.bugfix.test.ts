@@ -1,13 +1,22 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { 
-  parseLocationString, 
-  parseJournalEntries, 
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import {
+  parseLocationString,
+  parseJournalEntries,
   classifyLocations,
   geocodeLocation
 } from '@/lib/geocoding';
 import { JournalEntry } from '@/lib/journalStorage';
+import { forceRuntimeMode } from '@/utils/environment';
 
 describe('Geocoding Bug Fix Tests', () => {
+  beforeEach(() => {
+    forceRuntimeMode('studio');
+  });
+
+  afterEach(() => {
+    forceRuntimeMode(null);
+  });
+
   describe('parseLocationString enhanced parsing', () => {
     it('should handle French location formats', () => {
       expect(parseLocationString('Amman, Jordanie')).toEqual(['Amman', 'Jordanie']);

@@ -1,14 +1,23 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { 
   parseLocationString, 
   parseJournalEntries, 
   classifyLocations,
   geocodeLocation,
-  geocodeJournalEntries 
+  geocodeJournalEntries
 } from '@/lib/geocoding';
 import { JournalEntry } from '@/lib/journalStorage';
+import { forceRuntimeMode } from '@/utils/environment';
 
 describe('Geocoding Detailed Tests', () => {
+  beforeEach(() => {
+    forceRuntimeMode('studio');
+  });
+
+  afterEach(() => {
+    forceRuntimeMode(null);
+  });
+
   describe('parseLocationString', () => {
     it('should parse single location', () => {
       expect(parseLocationString('Amman')).toEqual(['Amman']);
@@ -227,7 +236,9 @@ describe('Geocoding Detailed Tests', () => {
 
     it('should geocode all locations successfully', async () => {
       // All locations should be found in local database
-      const result = await geocodeJournalEntries(mockEntries, 'test-token');
+      const result = await geocodeJournalEntries(mockEntries, 'test-token', {
+        persistToStore: false
+      });
       
       expect(result).toHaveLength(4);
       
@@ -255,13 +266,18 @@ describe('Geocoding Detailed Tests', () => {
     });
 
     it('should handle empty entries', async () => {
-      const result = await geocodeJournalEntries([], 'test-token');
+      const result = await geocodeJournalEntries([], 'test-token', {
+        persistToStore: false
+      });
       expect(result).toEqual([]);
     });
 
     it('should call progress callback correctly', async () => {
       const onProgress = vi.fn();
-      await geocodeJournalEntries(mockEntries, 'test-token', onProgress);
+      await geocodeJournalEntries(mockEntries, 'test-token', {
+        onProgress,
+        persistToStore: false
+      });
       
       // Should be called 4 times (once per location)
       expect(onProgress).toHaveBeenCalledTimes(4);
@@ -290,7 +306,9 @@ describe('Geocoding Detailed Tests', () => {
         json: () => Promise.resolve({ features: [] })
       });
 
-      const result = await geocodeJournalEntries(entriesWithUnknown, 'test-token');
+      const result = await geocodeJournalEntries(entriesWithUnknown, 'test-token', {
+        persistToStore: false
+      });
       
       // Should only find Amman (from local database)
       expect(result).toHaveLength(1);
