@@ -1,0 +1,32 @@
+name: Lockfile Auto-Fix
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [ main ]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  fix:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+      - run: npm install --package-lock-only
+      - name: Commit lockfile if changed
+        run: |
+          if ! git diff --quiet -- package-lock.json; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add package-lock.json
+            git commit -m "chore(lockfile): sync package-lock.json"
+            git push
+          fi
