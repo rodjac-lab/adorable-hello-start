@@ -1,16 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
-import { 
-  JournalEntry, 
-  loadJournalEntries, 
-  updateJournalEntry, 
-  addJournalEntry,
-  getJournalStats 
-} from '@/lib/journalStorage';
+import {
+  type JournalEntryContent,
+  getJournalEntries,
+  saveJournalEntry,
+  getJournalStats,
+  subscribeToContentStore,
+} from '@/lib/contentStore';
 
 // Plus de defaultEntries - tout est maintenant unifié dans le système de persistance
 
 export const useJournalEntries = () => {
-  const [allEntries, setAllEntries] = useState<JournalEntry[]>([]);
+  const [allEntries, setAllEntries] = useState<JournalEntryContent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -18,7 +18,7 @@ export const useJournalEntries = () => {
   useEffect(() => {
     console.log('🚀 Initializing unified journal system...');
     try {
-      const loaded = loadJournalEntries();
+      const loaded = getJournalEntries();
       console.log('📚 Loaded all entries:', loaded.map(e => `Day ${e.day}: ${e.title}`));
       setAllEntries(loaded);
       setError(null);
@@ -28,11 +28,18 @@ export const useJournalEntries = () => {
     } finally {
       setIsLoading(false);
     }
+    const unsubscribe = subscribeToContentStore(state => {
+      setAllEntries([...state.journalEntries].sort((a, b) => a.day - b.day));
+    });
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   // Plus besoin de fusion - tout est unifié
-  const getAllEntries = useCallback((): JournalEntry[] => {
-    return allEntries.sort((a, b) => a.day - b.day);
+  const getAllEntries = useCallback((): JournalEntryContent[] => {
+    return [...allEntries].sort((a, b) => a.day - b.day);
   }, [allEntries]);
 
   // Ajouter une nouvelle entrée
@@ -40,12 +47,12 @@ export const useJournalEntries = () => {
     console.log('➕ Adding new entry:', formData.title);
     
     try {
-      const newEntry: JournalEntry = {
+      const newEntry: JournalEntryContent = {
         day: formData.day,
-        date: formData.date.toLocaleDateString('fr-FR', { 
-          day: 'numeric', 
-          month: 'long', 
-          year: 'numeric' 
+        date: formData.date.toLocaleDateString('fr-FR', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
         }),
         title: formData.title,
         location: formData.location,
@@ -53,21 +60,16 @@ export const useJournalEntries = () => {
         mood: formData.mood,
         photos: formData.photos || [],
         link: formData.link || undefined,
+        isCustom: true,
       };
 
-      const success = await addJournalEntry(newEntry);
-      
-      if (success) {
-        // Recharger toutes les données depuis le localStorage
-        const updated = loadJournalEntries();
-        setAllEntries(updated);
-        console.log('✅ Entry added successfully, total entries:', updated.length);
-        setError(null);
-        return true;
-      } else {
-        setError('Erreur lors de l\'ajout de l\'entrée');
-        return false;
-      }
+      await saveJournalEntry(newEntry);
+
+      const updated = getJournalEntries();
+      setAllEntries(updated);
+      console.log('✅ Entry added successfully, total entries:', updated.length);
+      setError(null);
+      return true;
     } catch (err) {
       console.error('❌ Error adding entry:', err);
       setError('Erreur lors de l\'ajout de l\'entrée');
@@ -80,12 +82,13 @@ export const useJournalEntries = () => {
     console.log('✏️ Editing entry for day:', originalDay, 'new title:', formData.title);
     
     try {
-      const updatedEntry: JournalEntry = {
+      const existing = allEntries.find(entry => entry.day === originalDay);
+      const updatedEntry: JournalEntryContent = {
         day: formData.day,
-        date: formData.date.toLocaleDateString('fr-FR', { 
-          day: 'numeric', 
-          month: 'long', 
-          year: 'numeric' 
+        date: formData.date.toLocaleDateString('fr-FR', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
         }),
         title: formData.title,
         location: formData.location,
@@ -93,22 +96,18 @@ export const useJournalEntries = () => {
         mood: formData.mood,
         photos: formData.photos || [],
         link: formData.link || undefined,
+        isCustom: existing?.isCustom ?? true,
       };
 
-      const success = await updateJournalEntry(updatedEntry);
-      
+      await saveJournalEntry(updatedEntry);
+
       // Toujours recharger les données et retourner true pour fermer le formulaire
-      const updated = loadJournalEntries();
+      const updated = getJournalEntries();
       setAllEntries(updated);
-      
-      if (success) {
-        console.log('✅ Entry updated successfully, total entries:', updated.length);
-        setError(null);
-      } else {
-        console.warn('⚠️ Save failed but form will close - check quota');
-        setError('Sauvegarde échouée: quota localStorage dépassé. Réduisez la taille des photos.');
-      }
-      
+
+      console.log('✅ Entry updated successfully, total entries:', updated.length);
+      setError(null);
+
       // Toujours retourner true pour fermer le formulaire
       return true;
     } catch (err) {
@@ -116,11 +115,11 @@ export const useJournalEntries = () => {
       setError('Erreur lors de la modification: ' + (err as Error).message);
       
       // Même en cas d'erreur, on recharge et on ferme le formulaire
-      const updated = loadJournalEntries();
+      const updated = getJournalEntries();
       setAllEntries(updated);
       return true;
     }
-  }, []);
+  }, [allEntries]);
 
   // Obtenir les statistiques
   const getStats = useCallback(() => {
@@ -132,7 +131,7 @@ export const useJournalEntries = () => {
     console.log('🔄 Manually reloading entries...');
     setIsLoading(true);
     try {
-      const loaded = loadJournalEntries();
+      const loaded = getJournalEntries();
       setAllEntries(loaded);
       setError(null);
     } catch (err) {
@@ -143,6 +142,11 @@ export const useJournalEntries = () => {
     }
   }, []);
 
+  const isCustom = useCallback((day: number) => {
+    const entry = allEntries.find(item => item.day === day);
+    return entry?.isCustom ?? false;
+  }, [allEntries]);
+
   return {
     allEntries: getAllEntries(),
     customEntries: allEntries, // Pour compatibilité rétroactive
@@ -151,6 +155,7 @@ export const useJournalEntries = () => {
     addEntry,
     editEntry,
     getStats,
-    reloadEntries
+    reloadEntries,
+    isCustom
   };
 };
