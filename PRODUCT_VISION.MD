@@ -1,27 +1,71 @@
-# Vision produit — carnet de voyage Jordanie
+# Product Vision — Carnet de voyage Jordanie
 
-## Objectif
-Créer un site web immersif relatant mes vacances en Jordanie. Le site doit combiner récit personnel, découverte culturelle et outils interactifs pour préparer ou revivre le voyage.
+## Contexte
+Je veux partager mes vacances en Jordanie avec ma famille à travers un site web simple, moderne et agréable à parcourir.  
+L’objectif n’est pas de viser une audience large, mais d’offrir une belle expérience à mes proches : texte, photos, anecdotes, gastronomie et références culturelles.
 
-## Expérience attendue
-- **Journal de bord** : écrire des notes quotidiennes, illustrer chaque étape avec photos/vidéos, conserver l’historique des modifications.
-- **Carte interactive** : visualiser l’itinéraire, afficher les lieux visités, relier les points à des extraits du journal et à des médias.
-- **Gastronomie** : présenter les plats découverts, recettes associées et bonnes adresses.
-- **Lectures & ressources** : partager livres, articles et podcasts qui ont accompagné le voyage.
-- **Galerie médias** : parcourir facilement les photos et vidéos sans qu’elles soient codées en dur.
+## Public cible
+- Ma famille et mes amis proches
+- Utilisation sur mobile, tablette et ordinateur
+- Pas besoin de fonctionnalités sociales avancées
 
-## Contraintes clés
-- **Pas de contenu en dur** : textes et images doivent être gérés via une interface d’édition interne au site (studio/admin) puis exportables avant publication.
-- **Mode édition masquable** : l’interface de saisie doit pouvoir être cachée pour le mode public.
-- **Performance & accessibilité** : chargements rapides, responsive design, attention au contraste et aux textes alternatifs.
-- **Réutilisation des données** : toutes les sections (journal, carte, gastronomie, lectures, galerie) doivent puiser dans un même stockage de contenu.
+## Objectif principal
+Créer un site web qui documente mon voyage :
+- Un carnet de route clair et illustré
+- Une carte interactive synchronisée avec le carnet
+- Des sections complémentaires (gastronomie, lectures/films)
 
-## Roadmap prioritaire
-1. **Centraliser le contenu** (store unique + import/export JSON).
-2. **Studio d’édition** pour créer/éditer les entrées (journal, lieux, plats, lectures, médias).
-3. **Population initiale** : fournir un itinéraire et quelques contenus par défaut.
-4. **Stabiliser la carte** : différencier mode édition / lecture et persister les coordonnées.
-5. **Optimiser médias & SEO** : images adaptées, métadonnées, sitemap/robots.
+---
 
-## Succès
-Le site est publiable sans modification du code source pour ajouter ou mettre à jour le contenu. L’expérience lecteur est riche et cohérente, tandis que l’édition reste simple via l’UI interne.
+## Structure du site
+
+### 1. Landing page
+- Design moderne, simple et accueillant
+- Présentation générale du voyage
+- Liens vers les 3 autres parties (Carnet de route, Gastronomie, Lectures & Films)
+
+### 2. Carnet de route
+- Liste des étapes du voyage, jour par jour
+- Chaque étape contient :
+  - **Titre** : nom du lieu / thème
+  - **Date** et numéro du jour
+  - **Texte** : notes personnelles, récit
+  - **Galerie de photos** : upload facile
+  - **Infos pratiques** (hébergement, transport, coûts si souhaité)
+  - **Header avec lieux visités** (pour alimenter la carte interactive)
+- Besoin d’un **menu admin** pour saisir le texte et uploader les photos sans toucher au code
+
+### 3. Carte interactive
+- Affiche tous les points visités (issus du carnet de voyage)
+- Fonctionnalités :
+  - Survol → affiche le nom du lieu
+  - Clic → redirige vers la page du carnet correspondante
+- Synchronisation automatique avec les headers du carnet de voyage
+
+### 4. Gastronomie
+- Page dédiée aux plats et spécialités jordaniennes
+- Texte + photos de mon voyage
+- Autorise aussi des photos externes (sources internet)
+- Présentation simple, structurée par plats / catégories
+
+### 5. Lectures & Films
+- Page listant des ressources culturelles sur la Jordanie
+- Livres, articles, films, documentaires
+- Chaque ressource avec titre + résumé + lien externe (Amazon, Wikipedia, IMDB…)
+
+---
+
+## Fonctionnalités transverses
+- **SEO basique** (titre, description, og:image)
+- **Images optimisées** (WebP/AVIF, responsive)
+- **Responsive design**
+- **Recherche** (titre/tags/texte)
+- **Sitemap + robots.txt**
+
+---
+
+## Vision long terme
+À terme, le site devient un **souvenir interactif** du voyage :
+- Facile à maintenir (contenu séparé du code, admin simple)
+- Facile à parcourir (landing moderne, navigation claire, galerie, carte)
+- Belle vitrine culturelle (gastronomie + lectures/films)
