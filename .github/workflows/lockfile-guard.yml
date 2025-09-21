@@ -1,0 +1,21 @@
+name: Lockfile Guard
+on:
+  pull_request:
+    paths:
+      - '**/package.json'
+      - '**/package-lock.json'
+      - '**/yarn.lock'
+      - '**/pnpm-lock.yaml'
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fail on non-npm lockfiles
+        run: |
+          set -e
+          if git ls-files | grep -E '(^|/)(yarn.lock|pnpm-lock.yaml)$'; then
+            echo "::error::Non-npm lockfiles found (yarn.lock or pnpm-lock.yaml). Please remove them."
+            exit 1
+          fi
+          echo "OK: only npm lockfiles present."

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import Map from '@/components/Map';
-import { useJournalEntries } from '@/hooks/useJournalEntries';
+import { useMapContent } from '@/hooks/useMapContent';
 import { geocodeJournalEntries } from '@/lib/geocoding';
 
 // Mock mapbox-gl
@@ -28,10 +28,10 @@ vi.mock('mapbox-gl', () => ({
 }));
 
 // Mock hooks
-vi.mock('@/hooks/useJournalEntries');
+vi.mock('@/hooks/useMapContent');
 vi.mock('@/lib/geocoding');
 
-const mockUseJournalEntries = vi.mocked(useJournalEntries);
+const mockUseMapContent = vi.mocked(useMapContent);
 const mockGeocodeJournalEntries = vi.mocked(geocodeJournalEntries);
 
 describe('Map Integration Tests', () => {
@@ -89,15 +89,15 @@ describe('Map Integration Tests', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+
     mockUseJournalEntries.mockReturnValue({
       allEntries: mockEntries,
       customEntries: mockEntries,
+      isCustom: vi.fn().mockReturnValue(false),
+main
       isLoading: false,
       error: null,
-      addEntry: vi.fn(),
-      editEntry: vi.fn(),
-      getStats: vi.fn(),
-      reloadEntries: vi.fn()
+      isStudioEditing: false,
     });
   });
 
@@ -175,15 +175,12 @@ describe('Map Integration Tests', () => {
 
   it('should be disabled when no journal entries exist', () => {
     // Given: no journal entries
-    mockUseJournalEntries.mockReturnValue({
-      allEntries: [],
-      customEntries: [],
+    mockUseMapContent.mockReturnValue({
+      entries: [],
+      status: 'published',
       isLoading: false,
       error: null,
-      addEntry: vi.fn(),
-      editEntry: vi.fn(),
-      getStats: vi.fn(),
-      reloadEntries: vi.fn()
+      isStudioEditing: false,
     });
 
     render(<Map />);
