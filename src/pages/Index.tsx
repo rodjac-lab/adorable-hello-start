@@ -68,7 +68,7 @@ const Index = () => {
               size="lg"
               className="bg-white text-primary hover:bg-white/90 font-inter font-semibold px-8 py-4 rounded-full text-lg shadow-elegant"
             >
-              <a href="/journal">Découvrir le voyage</a>
+              <a href="/journal">🚑 Récupérer mes données</a>
             </Button>
             <Button 
               asChild
