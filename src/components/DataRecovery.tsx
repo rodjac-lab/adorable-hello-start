@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { diagnosticTools } from '@/lib/journalStorage';
+import { cleanupTestData, forceStorageReset } from '@/utils/dataCleanup';
 
 const DataRecovery = () => {
   const [recoveryInfo, setRecoveryInfo] = useState<any>(null);
@@ -38,6 +39,23 @@ const DataRecovery = () => {
     URL.revokeObjectURL(url);
   };
 
+  const cleanTestData = () => {
+    try {
+      const cleaned = cleanupTestData();
+      console.log('🧹 Données nettoyées:', cleaned);
+      setRecoveryInfo(prev => ({ ...prev, cleaned }));
+      window.location.reload();
+    } catch (error) {
+      console.error('❌ Erreur de nettoyage:', error);
+    }
+  };
+
+  const resetVersion = () => {
+    forceStorageReset();
+    console.log('🔄 Version réinitialisée - rechargement nécessaire');
+    window.location.reload();
+  };
+
   return (
     <Card className="w-full max-w-2xl mx-auto mt-4">
       <CardHeader>
@@ -56,6 +74,12 @@ const DataRecovery = () => {
           </Button>
           <Button onClick={recoverFromBackup} variant="default">
             🔄 Récupérer depuis sauvegarde
+          </Button>
+          <Button onClick={cleanTestData} variant="destructive">
+            🧹 Nettoyer données de test
+          </Button>
+          <Button onClick={resetVersion} variant="outline">
+            🔄 Réinitialiser version
           </Button>
           <Button onClick={exportAllData} variant="outline">
             📥 Exporter toutes les données

@@ -15,26 +15,8 @@ const BACKUP_2_KEY = 'journalEntries_backup2';
 const VERSION_KEY = 'journalStorage_version';
 const CURRENT_VERSION = '2.1';
 
-// Migration des jours 1 et 2 depuis le code vers le système unifié
-const LEGACY_ENTRIES: JournalEntry[] = [
-  { 
-    day: 1, 
-    date: "15 mars 2024",
-    title: "Arrivée à Amman",
-    location: "Amman, Jordanie",
-    story: "Départ de Lyon le 30/07, direction Paris CDG en train. Le trajet en Ouigo s'est avéré décevant : inconfort, mal de dos… Heureusement, à l'aéroport CDG, les choses s'enchaînent facilement : pas de bagage à enregistrer, embarquement rapide. Les places en rang 11 offrent un bon confort pour les jambes, mais le dos continue de protester.\n\nÀ l'arrivée à l'aéroport Queen Alia d'Amman, un contact de l'agence nous prend en charge. Les formalités sont rapides. Achat de carte SIM, puis trajet de 45 minutes jusqu'à l'hôtel. La chaleur est bien là. Le chauffeur est bavard et parle un peu français. Une fois à l'hôtel : installation et dodo.",
-    mood: "Enthousiaste"
-  },
-  {
-    day: 2,
-    date: "16 mars 2024", 
-    title: "Jerash, Ajlun et spa à Amman",
-    location: "Jerash, Ajlun, Amman",
-    story: "Mal dormi, toujours ce mal de dos. Petit déjeuner très correct à l'hôtel, puis réception de la voiture de location. Grosse déception : au lieu du SUV attendu, on se retrouve avec une Nissan Kicks. « Yes, this is mini SUV sir ». Mouais… On compte faire une réclamation.\n\nDirection Jerash. Les ruines romaines sont splendides. Le site est immense, bien conservé. On y ressent l'empreinte d'un passé glorieux. Une balade impressionnante à travers les siècles.\n\nDéjeuner sur place : assiette mixte grill avec agneau, bœuf et poulet, hummus, taboulé. Tout est délicieux, les saveurs locales s'imposent dès ce premier vrai repas.\n\nDans un coin discret du restaurant, cette salle était réservée à la préparation des chichas. Alignées comme des soldats prêts à servir, elles attendaient les amateurs de fumée parfumée. Nous avons décliné l'invitation cette fois-ci. Peut-être une autre fois.\n\nL'après-midi, visite du château de Ajlun. Intéressant mais très fréquenté, un peu trop. Retour à Amman pour une séance spa à l'hôtel : hammam, sauna, gommage, massage… Une belle pause bien méritée.\n\nLe soir, dîner chez Ghaith, petit restaurant familial du quartier, à distance de marche. Très bon, ambiance simple et conviviale.",
-    mood: "Mitigé",
-    link: "https://maps.app.goo.gl/XHDM6vpRh1KCrQbB6"
-  }
-];
+// Pas d'entrées legacy - les vraies données sont dans localStorage
+const LEGACY_ENTRIES: JournalEntry[] = [];
 
 /**
  * Migration automatique - Ajoute les jours 1 et 2 s'ils n'existent pas déjà
