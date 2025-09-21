@@ -8,36 +8,26 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Use Node.js 20
+      - name: Use Node.js from .nvmrc
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: '.nvmrc'
           cache: 'npm'
 
       - name: Show Node & npm versions
         run: node -v && npm -v
 
-      # 🔎 Pré-check: le lockfile correspond-il à package.json ?
       - name: Verify lockfile is up to date
         run: |
-          # Génère uniquement le lock sans installer les modules
           npm install --package-lock-only
-          if ! git diff --quiet -- package-lock.json; then
-            echo "::error::package-lock.json n'est pas synchronisé avec package.json."
-            echo "Conseil : sur la branche de la PR, exécute:"
-            echo "  rm -rf node_modules package-lock.json && npm install"
-            echo "  git add package-lock.json && git commit -m 'chore(lockfile): sync' && git push"
-            exit 1
-          fi
+          git diff --quiet -- package-lock.json || (echo "::error::package-lock.json n'est pas synchronisé avec package.json. Regénérez le lockfile et re-committez-le."; exit 1)
 
       - name: Install
         run: npm ci
 
-      # Si on ajoute Contentlayer plus tard
       - name: Build
         run: |
           if [ -f contentlayer.config.ts ]; then

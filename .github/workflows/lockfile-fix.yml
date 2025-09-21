@@ -1,10 +1,9 @@
 name: Lockfile Fix
-
 on:
   workflow_dispatch:
     inputs:
       target_branch:
-        description: 'Branch to fix (ex: feature/my-branch ou le nom de ta PR)'
+        description: 'Branch to fix (ex: feature/my-branch)'
         required: true
 
 permissions:
@@ -20,10 +19,10 @@ jobs:
         with:
           ref: ${{ inputs.target_branch }}
 
-      - name: Use Node.js 20
+      - name: Use Node.js from .nvmrc
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: '.nvmrc'
           cache: 'npm'
 
       - name: Regenerate lockfile (no full install)
