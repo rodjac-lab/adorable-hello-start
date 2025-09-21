@@ -1,5 +1,7 @@
+
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm, UseFormReturn } from "react-hook-form";
+ main
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
@@ -53,6 +55,8 @@ const parseFrenchDate = (dateString: string): Date | undefined => {
     return undefined;
   }
 };
+
+ main
 
 // Define the schema for form validation
 const journalEntrySchema = z.object({
@@ -128,7 +132,9 @@ interface UseJournalEntryFormOptions {
 export const useJournalEntryForm = (options: UseJournalEntryFormOptions = {}): UseJournalEntryFormResult => {
   const { editEntry } = options;
   const [showPreview, setShowPreview] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<string[]>(editEntry?.photos || []);
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const [isDragActive, setIsDragActive] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const form = useForm<JournalEntryFormData>({
     resolver: zodResolver(journalEntrySchema),
@@ -136,6 +142,8 @@ export const useJournalEntryForm = (options: UseJournalEntryFormOptions = {}): U
   });
 
   const watchedValues = form.watch();
+  const photos = watchedValues.photos || [];
+
 
   useEffect(() => {
     const defaults = getDefaultValues(editEntry) as JournalEntryFormData;
@@ -193,6 +201,7 @@ export const useJournalEntryForm = (options: UseJournalEntryFormOptions = {}): U
     const updatedPhotos = (form.getValues("photos") || []).filter(photo => photo !== photoToRemove);
     form.setValue("photos", updatedPhotos);
   }, [form]);
+ main
 
   const resetForm = useCallback((entry?: AddJournalEntryFormProps["editEntry"]) => {
     const defaults = getDefaultValues(entry) as JournalEntryFormData;
@@ -200,6 +209,7 @@ export const useJournalEntryForm = (options: UseJournalEntryFormOptions = {}): U
     setUploadedFiles(defaults.photos || []);
     setShowPreview(false);
   }, [form]);
+
 
   return {
     form,
@@ -212,6 +222,7 @@ export const useJournalEntryForm = (options: UseJournalEntryFormOptions = {}): U
     resetForm,
   };
 };
+main
 
 export interface JournalEntryFormProps {
   form: UseFormReturn<JournalEntryFormData>;
@@ -339,6 +350,7 @@ export const JournalEntryForm: React.FC<JournalEntryFormProps> = ({
           )}
         </div>
 
+
         {/* Story */}
         <div className="space-y-2">
           <Label htmlFor="story">Votre histoire</Label>
@@ -369,6 +381,7 @@ export const JournalEntryForm: React.FC<JournalEntryFormProps> = ({
             <p className="text-sm text-destructive">{form.formState.errors.link.message}</p>
           )}
         </div>
+main
 
         {/* Photo Upload */}
         <div className="space-y-2">
@@ -427,6 +440,7 @@ export const JournalEntryForm: React.FC<JournalEntryFormProps> = ({
             </div>
           )}
         </div>
+
 
         {/* Actions */}
         <div className="flex flex-col gap-4 pt-4 sm:flex-row">
@@ -587,6 +601,7 @@ export const AddJournalEntryForm: React.FC<AddJournalEntryFormProps> = ({
       </Card>
 
       <JournalEntryPreview visible={showPreview} values={watchedValues} />
+ main
     </div>
   );
 };

@@ -1,3 +1,4 @@
+
 import { useCallback, useEffect, useState } from 'react';
 import {
   type MediaAsset,
@@ -79,5 +80,6 @@ export const useMediaLibrary = () => {
     reload,
     saveAsset,
     deleteAsset,
+main
   };
 };

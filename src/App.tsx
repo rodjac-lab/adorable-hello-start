@@ -8,6 +8,7 @@ import Journal from "./pages/Journal";
 import Food from "./pages/Food";
 import Gallery from "./pages/Gallery";
 import Recommendations from "./pages/Recommendations";
+import Studio from "./pages/Studio";
 import NotFound from "./pages/NotFound";
 import Studio from "./pages/Studio";
 
@@ -29,7 +30,9 @@ const App = ({ studioVisible = false }: AppProps) => (
           <Route path="/food" element={<Food />} />
           <Route path="/gallery" element={<Gallery />} />
           <Route path="/recommendations" element={<Recommendations />} />
+
           {studioVisible && <Route path="/studio" element={<Studio />} />}
+main
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -63,12 +63,12 @@ const Index = () => {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-6 justify-center">
-            <Button 
+            <Button
               asChild
               size="lg"
               className="bg-white text-primary hover:bg-white/90 font-inter font-semibold px-8 py-4 rounded-full text-lg shadow-elegant"
             >
-              <a href="/journal">🚑 Récupérer mes données</a>
+              <a href="/studio">🚑 Ouvrir le studio</a>
             </Button>
             <Button 
               asChild

@@ -1,3 +1,4 @@
+
 import { useMemo, useState } from "react";
 import { Header } from "@/components/Header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -160,11 +161,14 @@ const Studio = () => {
                 {isLoading && <span className="text-sm text-muted-foreground">Actualisation en cours...</span>}
               </div>
               <JournalDiagnostic />
+ main
             </TabsContent>
           </Tabs>
         </div>
       </div>
+
     </>
+ main
   );
 };
 
