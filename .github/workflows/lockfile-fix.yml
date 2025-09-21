@@ -1,11 +1,11 @@
 name: Lockfile Fix
+
 on:
   workflow_dispatch:
     inputs:
       target_branch:
-        description: 'Branch to fix'
+        description: 'Branch to fix (ex: feature/my-branch ou le nom de ta PR)'
         required: true
-        default: ${{ github.ref_name }}
 
 permissions:
   contents: write
@@ -26,12 +26,12 @@ jobs:
           node-version: 20
           cache: 'npm'
 
-      - name: Regenerate lockfile (no install of modules)
+      - name: Regenerate lockfile (no full install)
         run: |
           rm -f package-lock.json
           npm install --package-lock-only
 
-      - name: Commit updated lockfile
+      - name: Commit updated lockfile if changed
         run: |
           if ! git diff --quiet -- package-lock.json; then
             git config user.name "github-actions[bot]"
