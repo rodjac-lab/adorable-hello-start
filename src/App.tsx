@@ -9,10 +9,15 @@ import Food from "./pages/Food";
 import Gallery from "./pages/Gallery";
 import Recommendations from "./pages/Recommendations";
 import NotFound from "./pages/NotFound";
+import Studio from "./pages/Studio";
 
 const queryClient = new QueryClient();
 
-const App = () => (
+interface AppProps {
+  studioVisible?: boolean;
+}
+
+const App = ({ studioVisible = false }: AppProps) => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
@@ -24,6 +29,7 @@ const App = () => (
           <Route path="/food" element={<Food />} />
           <Route path="/gallery" element={<Gallery />} />
           <Route path="/recommendations" element={<Recommendations />} />
+          {studioVisible && <Route path="/studio" element={<Studio />} />}
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

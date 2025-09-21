@@ -20,15 +20,30 @@ jobs:
           ref: ${{ inputs.target_branch }}
 
       - name: Use Node.js from .nvmrc
+        if: hashFiles('.nvmrc') != ''
         uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
 
-      - name: Regenerate lockfile (no full install)
+      - name: Use Node.js 20 (fallback)
+        if: hashFiles('.nvmrc') == ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Align npm to packageManager version
         run: |
-          rm -f package-lock.json
-          npm install --package-lock-only
+          PM=$(node -p "try { require('./package.json').packageManager } catch (e) { '' }")
+          if [[ "$PM" == npm@* ]]; then
+            echo "Aligning npm to $PM"
+            npm install -g "$PM"
+          fi
+          npm -v
+
+      - name: Regenerate package-lock.json
+        run: npm install --package-lock-only
 
       - name: Commit updated lockfile if changed
         run: |
@@ -36,7 +51,7 @@ jobs:
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add package-lock.json
-            git commit -m "chore(lockfile): sync package-lock with package.json"
+            git commit -m "chore(lockfile): sync package-lock.json"
             git push
           else
             echo "Lockfile already up to date."
