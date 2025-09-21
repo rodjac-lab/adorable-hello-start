@@ -1,0 +1,39 @@
+name: Fix lockfile
+
+on:
+  workflow_dispatch:
+
+jobs:
+  update-lockfile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Refresh lockfile
+        run: |
+          npm config set registry https://registry.npmjs.org/
+          npm install --package-lock-only --no-audit --no-fund
+          npm dedupe || true
+
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: chore: update package-lock.json
+          title: chore: update package-lock.json
+          body: |
+            ## Summary
+            - refresh package-lock.json using npm install --package-lock-only
+            - dedupe dependencies to keep the tree consistent
+
+            ## Testing
+            - not run (automation only)
+          branch: chore/update-lockfile
+          delete-branch: true
+          base: main
+          add-paths: |
+            package-lock.json
