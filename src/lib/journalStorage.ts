@@ -1,3 +1,5 @@
+import snapshotFile from '@/content/journal-snapshot.json';
+
 export type JournalEntry = {
   day: number;
   date: string;
@@ -13,7 +15,9 @@ const STORAGE_KEY = 'journalEntries';
 const BACKUP_KEY = 'journalEntries_backup';
 const BACKUP_2_KEY = 'journalEntries_backup2';
 const VERSION_KEY = 'journalStorage_version';
+
 const CURRENT_VERSION = '3.0';
+ main
 
 import { compressImageUrl } from './imageCompression';
 import {
@@ -232,24 +236,44 @@ export const loadJournalEntries = (): JournalEntry[] => {
     console.log('📖 Raw data from storage:', saved?.length ? `${saved.length} chars` : 'empty');
 
     if (!saved) {
-      console.log('📭 No saved entries found after migration');
+      console.log('📭 No saved entries found after migration, attempting snapshot seeding');
+      const snapshotEntries = seedFromSnapshot();
+      if (snapshotEntries.length > 0) {
+        return snapshotEntries;
+      }
       return [];
     }
 
-    const parsed = JSON.parse(saved);
-    console.log('✅ Parsed entries:', parsed.length);
+    let parsed: unknown = null;
+    try {
+      parsed = JSON.parse(saved);
+    } catch (error) {
+      console.error('❌ Invalid JSON in localStorage, attempting snapshot fallback then recovery');
+      const snapshotEntries = seedFromSnapshot();
+      if (snapshotEntries.length > 0) {
+        return snapshotEntries;
+      }
+      return recoverFromBackup();
+    }
+    console.log('✅ Parsed entries:', Array.isArray(parsed) ? parsed.length : 0);
 
     // Validation des données chargées
     if (!Array.isArray(parsed)) {
       console.error('❌ Invalid data format in localStorage, attempting recovery');
+      const snapshotEntries = seedFromSnapshot();
+      if (snapshotEntries.length > 0) {
+        return snapshotEntries;
+      }
       return recoverFromBackup();
     }
 
+    const parsedEntries = parsed as JournalEntry[];
+
     // Validation de chaque entrée
-    const validEntries = parsed.filter(entry => {
-      const isValid = entry && 
-        typeof entry.day === 'number' && 
-        typeof entry.title === 'string' && 
+    const validEntries = parsedEntries.filter(entry => {
+      const isValid = entry &&
+        typeof entry.day === 'number' &&
+        typeof entry.title === 'string' &&
         typeof entry.date === 'string';
       
       if (!isValid) {
@@ -258,8 +282,8 @@ export const loadJournalEntries = (): JournalEntry[] => {
       return isValid;
     });
 
-    if (validEntries.length !== parsed.length) {
-      console.warn(`⚠️ Found ${parsed.length - validEntries.length} corrupted entries, using valid ones only`);
+    if (validEntries.length !== parsedEntries.length) {
+      console.warn(`⚠️ Found ${parsedEntries.length - validEntries.length} corrupted entries, using valid ones only`);
       // Sauvegarder les entrées valides immédiatement
       saveJournalEntries(validEntries);
     }
@@ -270,6 +294,10 @@ export const loadJournalEntries = (): JournalEntry[] => {
     return validEntries;
   } catch (error) {
     console.error('❌ Error loading journal entries:', error);
+    const snapshotEntries = seedFromSnapshot();
+    if (snapshotEntries.length > 0) {
+      return snapshotEntries;
+    }
     return recoverFromBackup();
   }
 };
@@ -315,6 +343,7 @@ export const recoverFromBackup = (): JournalEntry[] => {
       }
     }
 
+
     // Dernier recours : réinjecter les entrées canons
     console.log('📦 Using canonical entries as last resort');
     const canonical = getCanonicalJournalEntries().map(entry => {
@@ -325,6 +354,7 @@ export const recoverFromBackup = (): JournalEntry[] => {
     syncJournalSources(canonical);
     return canonical;
     
+main
   } catch (error) {
     console.error('❌ All recovery attempts failed:', error);
     return [];

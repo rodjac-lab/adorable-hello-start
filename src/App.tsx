@@ -14,16 +14,19 @@ import Studio from "./pages/Studio";
 
 const queryClient = new QueryClient();
 
+
 interface AppProps {
   studioVisible?: boolean;
 }
 
 const App = ({ studioVisible = false }: AppProps) => (
+main
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
       <BrowserRouter>
+
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/journal" element={<Journal />} />
@@ -36,6 +39,7 @@ main
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
+main
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
