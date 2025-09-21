@@ -4,13 +4,12 @@ import { screen, fireEvent, waitFor } from '@testing-library/dom';
 import '@testing-library/jest-dom';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import Map from '@/components/Map';
-import * as useJournalEntriesModule from '@/hooks/useJournalEntries';
 import * as geocodingModule from '@/lib/geocoding';
 
-// Mock du hook useJournalEntries
-const mockUseJournalEntries = vi.fn();
-vi.mock('@/hooks/useJournalEntries', () => ({
-  useJournalEntries: () => mockUseJournalEntries()
+// Mock du hook useMapContent
+const mockUseMapContent = vi.fn();
+vi.mock('@/hooks/useMapContent', () => ({
+  useMapContent: () => mockUseMapContent()
 }));
 
 // Mock du service de géocodage
@@ -110,11 +109,20 @@ describe('Map Component', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseMapContent.mockReturnValue({
+      entries: mockJournalEntries,
+      status: 'published',
+      isLoading: false,
+      error: null,
+      isStudioEditing: false,
+    });
   });
 
   describe('SPÉCIFICATION: Interface initiale sans token', () => {
     it('devrait afficher le formulaire de configuration Mapbox quand aucun token n\'est fourni', () => {
+
       mockUseJournalEntries.mockReturnValue(createHookValue());
+main
 
       render(<Map />);
 
@@ -125,10 +133,12 @@ describe('Map Component', () => {
     });
 
     it('devrait désactiver le bouton si aucune entrée de journal n\'existe', () => {
+
       mockUseJournalEntries.mockReturnValue(createHookValue({
         allEntries: [],
         customEntries: [],
       }));
+main
 
       render(<Map />);
 
@@ -140,7 +150,9 @@ describe('Map Component', () => {
 
   describe('SPÉCIFICATION: Géocodage automatique des entrées du journal', () => {
     it('devrait analyser automatiquement les lieux du journal quand un token valide est fourni', async () => {
+
       mockUseJournalEntries.mockReturnValue(createHookValue());
+      main
 
       mockGeocodeJournalEntries.mockResolvedValue(expectedGeocodeResults);
 
@@ -170,7 +182,9 @@ describe('Map Component', () => {
     });
 
     it('devrait afficher les lieux détectés dans le modal de validation', async () => {
+
       mockUseJournalEntries.mockReturnValue(createHookValue());
+main
 
       mockGeocodeJournalEntries.mockResolvedValue(expectedGeocodeResults);
 
@@ -191,7 +205,9 @@ describe('Map Component', () => {
     });
 
     it('devrait gérer les erreurs de géocodage avec un message d\'erreur explicite', async () => {
+
       mockUseJournalEntries.mockReturnValue(createHookValue());
+ main
 
       const mockAlert = vi.spyOn(window, 'alert').mockImplementation(() => {});
       mockGeocodeJournalEntries.mockRejectedValue(new Error('Token invalide'));
@@ -212,7 +228,9 @@ describe('Map Component', () => {
     });
 
     it('devrait afficher un avertissement si aucun lieu n\'est géocodé avec succès', async () => {
+
       mockUseJournalEntries.mockReturnValue(createHookValue());
+ main
 
       const mockAlert = vi.spyOn(window, 'alert').mockImplementation(() => {});
       mockGeocodeJournalEntries.mockResolvedValue([]);
@@ -237,10 +255,12 @@ describe('Map Component', () => {
 
   describe('SPÉCIFICATION: États de chargement et feedback utilisateur', () => {
     it('devrait afficher un indicateur de chargement pendant le géocodage', async () => {
-      mockUseJournalEntries.mockReturnValue({
-        allEntries: mockJournalEntries,
+      mockUseMapContent.mockReturnValue({
+        entries: mockJournalEntries,
+        status: 'published',
         isLoading: false,
-        error: null
+        error: null,
+        isStudioEditing: false,
       });
 
       // Mock qui attend indéfiniment pour pouvoir tester l'état de chargement

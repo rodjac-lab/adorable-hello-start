@@ -1,3 +1,4 @@
+
 import { useCallback, useEffect, useState } from 'react';
 import {
   type MapLocationContent,
@@ -79,5 +80,6 @@ export const useMapContent = () => {
     reload,
     saveLocation,
     deleteLocation,
+    main
   };
 };
