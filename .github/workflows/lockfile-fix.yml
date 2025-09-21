@@ -1,39 +1,65 @@
-name: Fix lockfile
-
+name: Lockfile Auto-Fix
 on:
-  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [ main ]
+
+permissions:
+  contents: write
+  pull-requests: write
 
 jobs:
-  update-lockfile:
+  fix:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      # 1) Toujours checkout AVANT de lire .nvmrc
+      - name: Checkout PR head
+        uses: actions/checkout@v4
         with:
-          node-version: 20
+          ref: ${{ github.head_ref }}
+
+      # 2) Si .nvmrc existe → on l'utilise
+      - name: Setup Node from .nvmrc
+        if: hashFiles('.nvmrc') != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
           cache: 'npm'
 
-      - name: Refresh lockfile
-        run: |
-          npm config set registry https://registry.npmjs.org/
-          npm install --package-lock-only --no-audit --no-fund
-          npm dedupe || true
-
-      - name: Create pull request
-        uses: peter-evans/create-pull-request@v6
+      # 3) Sinon → fallback Node 20
+      - name: Setup Node 20 (fallback)
+        if: hashFiles('.nvmrc') == ''
+        uses: actions/setup-node@v4
         with:
-          commit-message: chore: update package-lock.json
-          title: chore: update package-lock.json
-          body: |
-            ## Summary
-            - refresh package-lock.json using npm install --package-lock-only
-            - dedupe dependencies to keep the tree consistent
+          node-version: '20'
+          cache: 'npm'
 
-            ## Testing
-            - not run (automation only)
-          branch: chore/update-lockfile
-          delete-branch: true
-          base: main
-          add-paths: |
-            package-lock.json
+      # 4) Aligner npm sur packageManager (si défini)
+      - name: Align npm to packageManager version
+        run: |
+          PM=$(node -p "try{require('./package.json').packageManager}catch{''}")
+          if [[ "$PM" == npm@* ]]; then
+            echo "Installing $PM"
+            npm i -g "$PM"
+          fi
+          npm -v
+
+      # 5) Régénérer le lockfile sans installer les modules
+      - name: Regenerate lockfile (no full install)
+        run: |
+          rm -f package-lock.json
+          npm install --package-lock-only
+
+      # 6) Commit si le lock a changé
+      - name: Commit lockfile if changed
+        run: |
+          if ! git diff --quiet -- package-lock.json; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add package-lock.json
+            git commit -m "chore(lockfile): sync package-lock.json"
+            git push
+          else
+            echo "Lockfile already up to date."
+          fi
