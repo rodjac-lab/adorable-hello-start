@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -41,7 +41,7 @@ const parseFrenchDate = (dateString: string): Date | undefined => {
     return undefined;
   }
 };
-import { CalendarIcon, Plus, X } from "lucide-react";
+import { CalendarIcon, Check, Images, Loader2, UploadCloud, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -51,8 +51,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useMediaLibrary } from "@/hooks/useMediaLibrary";
 
 // Define the schema for form validation
 const journalEntrySchema = z.object({
@@ -103,7 +106,9 @@ export const AddJournalEntryForm: React.FC<AddJournalEntryFormProps> = ({
   editEntry,
 }) => {
   const [showPreview, setShowPreview] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<string[]>(editEntry?.photos || []);
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const [isDragActive, setIsDragActive] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const form = useForm<JournalEntryFormData>({
     resolver: zodResolver(journalEntrySchema),
@@ -120,57 +125,74 @@ export const AddJournalEntryForm: React.FC<AddJournalEntryFormProps> = ({
   });
 
   const watchedValues = form.watch();
+  const photos = watchedValues.photos || [];
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files) return;
+  const {
+    assets: mediaAssets,
+    uploadMedia,
+    isUploading: isMediaUploading,
+    usage: mediaUsage,
+    usagePercent: mediaUsagePercent,
+    markAsUsed,
+    formatBytes: formatMediaBytes,
+  } = useMediaLibrary();
 
-    const newFiles: string[] = [];
-    
-    for (const file of Array.from(files)) {
-      try {
-        // Create FormData to upload file
-        const formData = new FormData();
-        formData.append('file', file);
-        
-        // Upload to lovable-uploads directory
-        const response = await fetch('/api/upload', {
-          method: 'POST', 
-          body: formData,
-        });
-        
-        if (response.ok) {
-          const result = await response.json();
-          newFiles.push(result.path || `/lovable-uploads/${file.name}`);
-        } else {
-          // Fallback to local file URL for preview
-          const fileUrl = URL.createObjectURL(file);
-          newFiles.push(fileUrl);
-        }
-      } catch (error) {
-        // Fallback to local file URL for preview
-        const fileUrl = URL.createObjectURL(file);
-        newFiles.push(fileUrl);
-      }
+  const appendAssetsToEntry = async (files: File[]) => {
+    if (!files.length) {
+      return;
     }
 
-    setUploadedFiles([...uploadedFiles, ...newFiles]);
-    form.setValue("photos", [...(form.getValues("photos") || []), ...newFiles]);
-    
-    toast.success(`${newFiles.length} photo(s) ajoutée(s)`);
+    const { added } = await uploadMedia(files);
+    if (added.length > 0) {
+      const currentPhotos = form.getValues("photos") || [];
+      const merged = Array.from(new Set([...currentPhotos, ...added.map((asset) => asset.url)]));
+      form.setValue("photos", merged, { shouldDirty: true });
+      added.forEach((asset) => markAsUsed(asset.id));
+    }
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files ? Array.from(event.target.files) : [];
+    await appendAssetsToEntry(files);
+    if (event.target) {
+      event.target.value = "";
+    }
   };
 
   const removePhoto = (photoToRemove: string) => {
-    const updatedFiles = uploadedFiles.filter(file => file !== photoToRemove);
     const updatedPhotos = (form.getValues("photos") || []).filter(photo => photo !== photoToRemove);
-    
-    setUploadedFiles(updatedFiles);
-    form.setValue("photos", updatedPhotos);
+    form.setValue("photos", updatedPhotos, { shouldDirty: true });
   };
 
   const handleSubmit = (data: JournalEntryFormData) => {
     onSubmit(data);
     toast.success(editEntry ? "Entrée modifiée avec succès !" : "Entrée de journal ajoutée !");
+  };
+
+  const handleDropUpload = async (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragActive(false);
+    const droppedFiles = Array.from(event.dataTransfer.files || []).filter((file) => file.type.startsWith("image"));
+    if (droppedFiles.length === 0) {
+      return;
+    }
+    await appendAssetsToEntry(droppedFiles);
+  };
+
+  const toggleMediaAsset = (assetUrl: string, assetId?: string) => {
+    const currentPhotos = form.getValues("photos") || [];
+    const alreadySelected = currentPhotos.includes(assetUrl);
+    const updated = alreadySelected
+      ? currentPhotos.filter((photo) => photo !== assetUrl)
+      : [...currentPhotos, assetUrl];
+
+    form.setValue("photos", Array.from(new Set(updated)), { shouldDirty: true });
+
+    if (!alreadySelected && assetId) {
+      markAsUsed(assetId);
+      toast.success("Photo ajoutée depuis la médiathèque");
+    }
   };
 
   return (
@@ -317,42 +339,96 @@ export const AddJournalEntryForm: React.FC<AddJournalEntryFormProps> = ({
             </div>
 
             {/* Photo Upload */}
-            <div className="space-y-2">
-              <Label>Photos (optionnel)</Label>
-              <div className="border-2 border-dashed border-muted rounded-lg p-4">
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <Label className="text-base font-medium">Photos (optionnel)</Label>
+                <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                  <span>{photos.length} sélectionnée(s)</span>
+                  <span>
+                    {mediaUsage.assetCount}/{mediaUsage.maxAssets} médias • {formatMediaBytes(mediaUsage.totalBytes)} / {formatMediaBytes(mediaUsage.maxBytes)}
+                    {mediaUsagePercent ? ` (${mediaUsagePercent}%)` : ""}
+                  </span>
+                </div>
+              </div>
+
+              <div
+                className={cn(
+                  "border-2 border-dashed rounded-lg p-6 transition-colors",
+                  isDragActive ? "border-primary bg-primary/5" : "border-muted",
+                  isMediaUploading && "opacity-80"
+                )}
+                onDragEnter={(event) => {
+                  event.preventDefault();
+                  setIsDragActive(true);
+                }}
+                onDragLeave={(event) => {
+                  event.preventDefault();
+                  setIsDragActive(false);
+                }}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={handleDropUpload}
+              >
                 <input
+                  ref={fileInputRef}
                   type="file"
                   accept="image/*"
                   multiple
                   onChange={handleFileUpload}
                   className="hidden"
-                  id="photo-upload"
                 />
-                <label
-                  htmlFor="photo-upload"
-                  className="cursor-pointer flex flex-col items-center justify-center space-y-2"
+                <div className="flex flex-col items-center justify-center space-y-3 text-center">
+                  {isMediaUploading ? (
+                    <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                  ) : (
+                    <UploadCloud className="h-10 w-10 text-muted-foreground" />
+                  )}
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-foreground">
+                      Glissez-déposez vos images ici
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Elles seront compressées et stockées dans votre médiathèque personnelle.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isMediaUploading}
+                  >
+                    {isMediaUploading ? "Compression en cours..." : "Sélectionner des fichiers"}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex items-center gap-2"
+                  onClick={() => setIsLibraryOpen(true)}
                 >
-                  <Plus className="h-8 w-8 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">
-                    Cliquez pour ajouter des photos
-                  </span>
-                </label>
+                  <Images className="h-4 w-4" />
+                  Ouvrir la médiathèque
+                </Button>
               </div>
 
               {/* Uploaded Photos */}
-              {uploadedFiles.length > 0 && (
+              {photos.length > 0 && (
                 <div className="space-y-3">
                   <p className="text-sm font-medium">Photos ajoutées :</p>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {uploadedFiles.map((file, index) => (
+                    {photos.map((file, index) => (
                       <div
                         key={`${file}-${index}`}
                         className="relative group"
                       >
                         <div className="aspect-square rounded-lg overflow-hidden bg-muted">
-                          <img 
-                            src={file} 
+                          <img
+                            src={file}
                             alt={`Photo ${index + 1}`}
+                            loading="lazy"
                             className="w-full h-full object-cover"
                             onError={(e) => {
                               const target = e.target as HTMLImageElement;
@@ -462,6 +538,72 @@ export const AddJournalEntryForm: React.FC<AddJournalEntryFormProps> = ({
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={isLibraryOpen} onOpenChange={setIsLibraryOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Médiathèque</DialogTitle>
+            <DialogDescription>
+              Cliquez sur une image pour l&apos;ajouter ou la retirer de votre entrée. Les nouveautés apparaissent ici après chaque téléversement.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+              <span>{mediaAssets.length} média(s) disponibles</span>
+              <span>
+                {formatMediaBytes(mediaUsage.totalBytes)} / {formatMediaBytes(mediaUsage.maxBytes)}
+                {mediaUsagePercent ? ` (${mediaUsagePercent}%)` : ""}
+              </span>
+            </div>
+            <ScrollArea className="max-h-[420px] pr-2">
+              {mediaAssets.length === 0 ? (
+                <div className="flex h-[280px] flex-col items-center justify-center space-y-2 text-center text-sm text-muted-foreground">
+                  <Images className="h-8 w-8 opacity-60" />
+                  <p>Aucun média disponible pour le moment.</p>
+                  <p>Ajoutez des images via le formulaire pour alimenter votre médiathèque.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 pr-2">
+                  {mediaAssets.map((asset) => {
+                    const isSelected = photos.includes(asset.url);
+                    return (
+                      <button
+                        key={asset.id}
+                        type="button"
+                        onClick={() => toggleMediaAsset(asset.url, asset.id)}
+                        className={cn(
+                          "group relative overflow-hidden rounded-lg border bg-muted/30 transition-all",
+                          isSelected ? "ring-2 ring-primary shadow-lg" : "hover:border-primary/60 hover:shadow-md"
+                        )}
+                      >
+                        <div className="aspect-square overflow-hidden bg-background">
+                          <img
+                            src={asset.url}
+                            alt={asset.name}
+                            loading="lazy"
+                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          />
+                        </div>
+                        <div className="flex items-center justify-between gap-2 px-3 py-2 text-left text-[11px] text-muted-foreground bg-background/80 backdrop-blur-sm">
+                          <span className="truncate font-medium text-foreground/80" title={asset.name}>
+                            {asset.name}
+                          </span>
+                          <span>{formatMediaBytes(asset.size)}</span>
+                        </div>
+                        {isSelected && (
+                          <div className="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md">
+                            <Check className="h-3.5 w-3.5" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </ScrollArea>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
