@@ -1,0 +1,37 @@
+{
+  "generatedAt": "2025-09-21T13:47:41.896Z",
+  "entries": [
+    {
+      "day": 1,
+      "date": "1 mars 2024",
+      "title": "Arrivée à Amman",
+      "location": "Amman",
+      "story": "Premier contact avec la capitale jordanienne : souks animés, senteurs d'épices et premiers échanges chaleureux avec les habitants.",
+      "mood": "Émerveillé",
+      "photos": [
+        "/lovable-uploads/0b1d45f0-c3dd-413d-89aa-6d7a070b4f6d.png"
+      ],
+      "link": "https://visitjordan.com/"
+    },
+    {
+      "day": 2,
+      "date": "2 mars 2024",
+      "title": "Route vers Pétra",
+      "location": "Pétra",
+      "story": "Lever de soleil sur les montagnes roses avant de découvrir le Siq et le trésor de Pétra. Une journée rythmée par la marche et la contemplation.",
+      "mood": "Inspiré",
+      "photos": [
+        "/lovable-uploads/ab7525ee-de5e-4ec5-bd8a-474c543dff10.png"
+      ]
+    }
+  ],
+  "stats": {
+    "totalEntries": 2,
+    "days": [
+      1,
+      2
+    ],
+    "firstDay": 1,
+    "lastDay": 2
+  }
+}

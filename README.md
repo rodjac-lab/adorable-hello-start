@@ -71,3 +71,11 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+
+## Workflow de gestion du contenu
+
+1. **Activer le studio** : démarrez l'application (`npm run dev`) et ouvrez l'interface d'édition intégrée pour mettre à jour les contenus du journal (textes, photos, liens...).
+2. **Remplir ou mettre à jour les fiches** : vérifiez que chaque jour possède un titre, une date et une humeur. Utilisez l'outil de diagnostic pour contrôler les sauvegardes locales.
+3. **Exporter les données** : une fois le contenu validé, exécutez `npm run export-content`. La commande génère `src/content/journal-snapshot.json`, met à jour `public/sitemap.xml` et `public/robots.txt`. Définissez `SITE_URL` si vous souhaitez personnaliser l'URL du sitemap.
+4. **Contrôler la carte & la navigation** : lancez les tests (`npx vitest run`) afin de vérifier l'affichage du journal exporté et la navigation des pages clés, en particulier la carte interactive.
+5. **Désactiver le studio avant déploiement** : assurez-vous de quitter le mode édition pour éviter d'exposer les outils de diagnostic, puis lancez le build ou la publication.

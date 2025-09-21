@@ -1,3 +1,5 @@
+import snapshotFile from '@/content/journal-snapshot.json';
+
 export type JournalEntry = {
   day: number;
   date: string;
@@ -17,6 +19,53 @@ const CURRENT_VERSION = '2.1';
 
 // Pas d'entrées legacy - les vraies données sont dans localStorage
 const LEGACY_ENTRIES: JournalEntry[] = [];
+
+type SnapshotFile = {
+  entries?: JournalEntry[];
+};
+
+const getSnapshotEntries = (): JournalEntry[] => {
+  const file = (snapshotFile as SnapshotFile) ?? { entries: [] };
+  if (!file.entries || !Array.isArray(file.entries)) {
+    return [];
+  }
+
+  return file.entries
+    .filter(entry => {
+      return (
+        entry &&
+        typeof entry.day === 'number' &&
+        typeof entry.title === 'string' &&
+        typeof entry.date === 'string' &&
+        typeof entry.location === 'string' &&
+        typeof entry.story === 'string' &&
+        typeof entry.mood === 'string'
+      );
+    })
+    .map(entry => ({
+      ...entry,
+      photos: Array.isArray(entry.photos) ? entry.photos : [],
+      link: entry.link,
+    }))
+    .sort((a, b) => a.day - b.day);
+};
+
+const seedFromSnapshot = (): JournalEntry[] => {
+  const snapshotEntries = getSnapshotEntries();
+  if (snapshotEntries.length === 0) {
+    return [];
+  }
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshotEntries));
+    localStorage.setItem(VERSION_KEY, CURRENT_VERSION);
+    console.log('🌐 Snapshot chargé dans le localStorage');
+  } catch (error) {
+    console.warn('⚠️ Impossible d\'écrire le snapshot dans le localStorage:', error);
+  }
+
+  return snapshotEntries;
+};
 
 /**
  * Migration automatique - Ajoute les jours 1 et 2 s'ils n'existent pas déjà
@@ -263,24 +312,44 @@ export const loadJournalEntries = (): JournalEntry[] => {
     console.log('📖 Raw data from storage:', saved?.length ? `${saved.length} chars` : 'empty');
 
     if (!saved) {
-      console.log('📭 No saved entries found after migration');
+      console.log('📭 No saved entries found after migration, attempting snapshot seeding');
+      const snapshotEntries = seedFromSnapshot();
+      if (snapshotEntries.length > 0) {
+        return snapshotEntries;
+      }
       return [];
     }
 
-    const parsed = JSON.parse(saved);
-    console.log('✅ Parsed entries:', parsed.length);
+    let parsed: unknown = null;
+    try {
+      parsed = JSON.parse(saved);
+    } catch (error) {
+      console.error('❌ Invalid JSON in localStorage, attempting snapshot fallback then recovery');
+      const snapshotEntries = seedFromSnapshot();
+      if (snapshotEntries.length > 0) {
+        return snapshotEntries;
+      }
+      return recoverFromBackup();
+    }
+    console.log('✅ Parsed entries:', Array.isArray(parsed) ? parsed.length : 0);
 
     // Validation des données chargées
     if (!Array.isArray(parsed)) {
       console.error('❌ Invalid data format in localStorage, attempting recovery');
+      const snapshotEntries = seedFromSnapshot();
+      if (snapshotEntries.length > 0) {
+        return snapshotEntries;
+      }
       return recoverFromBackup();
     }
 
+    const parsedEntries = parsed as JournalEntry[];
+
     // Validation de chaque entrée
-    const validEntries = parsed.filter(entry => {
-      const isValid = entry && 
-        typeof entry.day === 'number' && 
-        typeof entry.title === 'string' && 
+    const validEntries = parsedEntries.filter(entry => {
+      const isValid = entry &&
+        typeof entry.day === 'number' &&
+        typeof entry.title === 'string' &&
         typeof entry.date === 'string';
       
       if (!isValid) {
@@ -289,8 +358,8 @@ export const loadJournalEntries = (): JournalEntry[] => {
       return isValid;
     });
 
-    if (validEntries.length !== parsed.length) {
-      console.warn(`⚠️ Found ${parsed.length - validEntries.length} corrupted entries, using valid ones only`);
+    if (validEntries.length !== parsedEntries.length) {
+      console.warn(`⚠️ Found ${parsedEntries.length - validEntries.length} corrupted entries, using valid ones only`);
       // Sauvegarder les entrées valides immédiatement
       saveJournalEntries(validEntries);
     }
@@ -299,6 +368,10 @@ export const loadJournalEntries = (): JournalEntry[] => {
     return validEntries;
   } catch (error) {
     console.error('❌ Error loading journal entries:', error);
+    const snapshotEntries = seedFromSnapshot();
+    if (snapshotEntries.length > 0) {
+      return snapshotEntries;
+    }
     return recoverFromBackup();
   }
 };
@@ -340,11 +413,18 @@ export const recoverFromBackup = (): JournalEntry[] => {
       }
     }
     
-    // Dernier recours : utiliser les entrées par défaut (jours 1-2)
+    // Dernier recours : utiliser le snapshot embarqué ou les entrées legacy
+    const snapshotEntries = getSnapshotEntries();
+    if (snapshotEntries.length > 0) {
+      console.log('📦 Using bundled snapshot as last resort');
+      seedFromSnapshot();
+      return snapshotEntries;
+    }
+
     console.log('📦 Using legacy entries as last resort');
     saveJournalEntries(LEGACY_ENTRIES);
     return LEGACY_ENTRIES;
-    
+
   } catch (error) {
     console.error('❌ All recovery attempts failed:', error);
     return [];
