@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -5,11 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useJournalEntries } from '@/hooks/useJournalEntries';
 import { geocodeJournalEntries } from '@/lib/geocoding';
 import { MapLocation } from '@/types/map';
 import { JournalEntry } from '@/lib/journalStorage';
 import { LocationValidationModal } from './LocationValidationModal';
+import { useMapContent } from '@/hooks/useMapContent';
+import { MapLocationList } from './MapLocationList';
 
 const Map = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -22,16 +24,16 @@ const Map = () => {
   const [pendingLocations, setPendingLocations] = useState<MapLocation[]>([]);
   const [isGeocoding, setIsGeocoding] = useState(false);
 
-  const { allEntries } = useJournalEntries();
+  const { entries: mapEntries, isLoading: isContentLoading } = useMapContent();
 
   // DEBUGGING: Logs pour diagnostiquer le problème
-  console.log('🎯 Map component render:', { 
-    allEntriesCount: allEntries.length, 
+  console.log('🎯 Map component render:', {
+    allEntriesCount: mapEntries.length,
     mapboxTokenLength: mapboxToken.length,
     showTokenForm,
-    isGeocoding 
+    isGeocoding
   });
-  console.log('📝 Journal entries in Map:', allEntries);
+  console.log('📝 Journal entries in Map:', mapEntries);
 
   // Test function pour vérifier le géocodage sans API
   const testGeocoding = async () => {
@@ -88,11 +90,11 @@ const Map = () => {
   const handleGeocode = async () => {
     console.log('🗺️ Starting geocoding process...');
     console.log('📍 Token length:', mapboxToken.length);
-    console.log('📚 Journal entries count:', allEntries.length);
-    console.log('📝 Entries data:', allEntries.map(e => ({ day: e.day, location: e.location })));
-    
+    console.log('📚 Journal entries count:', mapEntries.length);
+    console.log('📝 Entries data:', mapEntries.map(e => ({ day: e.day, location: e.location })));
+
     // DEBUGGING: Alert visible pour confirmer le démarrage
-    alert(`🚀 DEBUT GEOCODAGE: ${allEntries.length} entrées à traiter`);
+    alert(`🚀 DEBUT GEOCODAGE: ${mapEntries.length} entrées à traiter`);
     
     if (!mapboxToken.trim()) {
       console.error('❌ No Mapbox token provided');
@@ -100,7 +102,7 @@ const Map = () => {
       return;
     }
     
-    if (allEntries.length === 0) {
+    if (mapEntries.length === 0) {
       console.error('❌ No journal entries found');
       alert('❌ Aucune entrée de journal trouvée!');
       return;
@@ -109,7 +111,7 @@ const Map = () => {
     setIsGeocoding(true);
     try {
       console.log('🔄 Calling geocodeJournalEntries...');
-      const locations = await geocodeJournalEntries(allEntries, mapboxToken);
+      const locations = await geocodeJournalEntries(mapEntries, mapboxToken);
       console.log('✅ Geocoding completed, locations found:', locations.length);
       console.log('📍 Locations:', locations);
       
@@ -344,22 +346,22 @@ const Map = () => {
                 className="font-mono text-sm"
               />
             </div>
-            <Button 
-              onClick={handleGeocode} 
-              disabled={!mapboxToken.trim() || allEntries.length === 0 || isGeocoding}
+            <Button
+              onClick={handleGeocode}
+              disabled={!mapboxToken.trim() || mapEntries.length === 0 || isGeocoding || isContentLoading}
               className="w-full"
             >
               {isGeocoding ? 'Géocodage en cours...' : 'Analyser les lieux du journal'}
             </Button>
-            <Button 
+            <Button
               onClick={testGeocoding}
-              disabled={allEntries.length === 0}
+              disabled={mapEntries.length === 0}
               variant="outline"
               className="w-full"
             >
               🧪 Test avec données locales
             </Button>
-            {allEntries.length === 0 && (
+            {mapEntries.length === 0 && (
               <p className="text-sm text-muted-foreground text-center">
                 Aucune entrée de journal trouvée. Ajoutez des entrées dans la section Journal.
               </p>
@@ -385,43 +387,12 @@ const Map = () => {
           {isMapInitialized && mapLocations.length > 0 && (
             <div className="mt-6">
               <h3 className="text-lg font-semibold mb-4">Lieux visités ({mapLocations.length} marqueurs)</h3>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {mapLocations
-                  .sort((a, b) => a.day - b.day)
-                  .map((location, index) => (
-                  <Card key={index} className="cursor-pointer hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div 
-                          className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold text-white ${
-                            location.type === 'principal' ? 'bg-blue-500' : 'bg-orange-500'
-                          }`}
-                        >
-                          {location.type === 'principal' ? location.day : '•'}
-                        </div>
-                        <h4 className="font-semibold">{location.name}</h4>
-                        <span className={`text-xs px-2 py-1 rounded ${
-                          location.type === 'principal' 
-                            ? 'bg-blue-100 text-blue-800' 
-                            : 'bg-orange-100 text-orange-800'
-                        }`}>
-                          {location.type}
-                        </span>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {location.journalEntry.title}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {location.journalEntry.date} - {location.journalEntry.mood}
-                      </p>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+              <MapLocationList locations={mapLocations} />
             </div>
           )}
         </>
       )}
+ main
     </div>
   );
 };

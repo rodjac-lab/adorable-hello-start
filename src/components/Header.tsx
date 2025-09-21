@@ -1,8 +1,9 @@
-import { useState } from "react";
-import { Menu, X, BookOpen, Calendar, Utensils, Map, BookOpenCheck } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Menu, X, BookOpen, Calendar, Utensils, Map, BookOpenCheck, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getStudioVisibility, subscribeToStudioVisibility } from "@/utils/studioVisibility";
 
-const navigation = [
+const baseNavigation = [
   { name: "Journal", href: "/journal", icon: Calendar },
   { name: "Gastronomie", href: "/food", icon: Utensils },
   { name: "Carte Interactive", href: "/gallery", icon: Map },
@@ -11,6 +12,26 @@ const navigation = [
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [studioVisible, setStudioVisible] = useState(() => getStudioVisibility());
+
+  useEffect(() => {
+    setStudioVisible(getStudioVisibility());
+
+    const unsubscribe = subscribeToStudioVisibility(setStudioVisible);
+
+    return unsubscribe;
+  }, []);
+
+  const navigation = useMemo(() => {
+    if (!studioVisible) {
+      return baseNavigation;
+    }
+
+    return [
+      ...baseNavigation,
+      { name: "Studio", href: "/studio", icon: LayoutDashboard },
+    ];
+  }, [studioVisible]);
 
   return (
     <header className="absolute top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">

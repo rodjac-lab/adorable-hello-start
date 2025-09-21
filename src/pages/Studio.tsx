@@ -1,266 +1,174 @@
-import { useRef, useState } from "react";
-import { toast } from "sonner";
 
-import DataRecovery from "@/components/DataRecovery";
+import { useMemo, useState } from "react";
 import { Header } from "@/components/Header";
-import { JournalDiagnostic } from "@/components/JournalDiagnostic";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
-import { useMediaLibrary } from "@/hooks/useMediaLibrary";
-import { MediaAsset } from "@/lib/mediaStore";
-import { Copy, FolderInput, Image as ImageIcon, Loader2, Trash2, UploadCloud } from "lucide-react";
+import { EntryFormPanel } from "@/components/studio/EntryFormPanel";
+import { JournalEntryList } from "@/components/studio/JournalEntryList";
+import { FoodEditor } from "@/components/studio/FoodEditor";
+import { ReadingEditor } from "@/components/studio/ReadingEditor";
+import { MapEditor } from "@/components/studio/MapEditor";
+import { MediaManager } from "@/components/studio/MediaManager";
+import { useJournalEntries } from "@/hooks/useJournalEntries";
+import { JournalEntry } from "@/lib/journalStorage";
+import { JournalEntryFormData } from "@/components/AddJournalEntryForm";
+import { JournalDiagnostic } from "@/components/JournalDiagnostic";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { RotateCw, NotebookPen, Map as MapIcon, UtensilsCrossed, BookOpen, Images, Activity } from "lucide-react";
+
+const formatFormDataToEntry = (data: JournalEntryFormData): JournalEntry => ({
+  day: data.day,
+  date: data.date.toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }),
+  title: data.title,
+  location: data.location,
+  story: data.story,
+  mood: data.mood,
+  photos: data.photos || [],
+  link: data.link || undefined,
+});
 
 const Studio = () => {
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
+  const [mode, setMode] = useState<"create" | "edit">("create");
+  const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
 
-  const {
-    assets,
-    uploadMedia,
-    deleteAsset,
-    usage,
-    usagePercent,
-    isUploading,
-    formatBytes,
-  } = useMediaLibrary();
+  const { allEntries, addEntry, editEntry, isLoading, error, reloadEntries } = useJournalEntries();
 
-  const handleUpload = async (files: File[]) => {
-    if (!files.length) {
-      return;
-    }
+  const sortedEntries = useMemo(() => [...allEntries].sort((a, b) => a.day - b.day), [allEntries]);
 
-    await uploadMedia(files);
+  const handleSelectEntry = (entry: JournalEntry) => {
+    setMode("edit");
+    setSelectedEntry(entry);
   };
 
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files ? Array.from(event.target.files) : [];
-    await handleUpload(files);
-    if (event.target) {
-      event.target.value = "";
-    }
+  const handleCreateNew = () => {
+    setMode("create");
+    setSelectedEntry(null);
   };
 
-  const handleDrop = async (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    setIsDragging(false);
-    const dropped = Array.from(event.dataTransfer.files || []).filter((file) => file.type.startsWith("image"));
-    if (!dropped.length) {
-      return;
-    }
-    await handleUpload(dropped);
+  const handleEntrySaved = (data: JournalEntryFormData) => {
+    const entry = formatFormDataToEntry(data);
+    setSelectedEntry(entry);
+    setMode("edit");
   };
 
-  const handleCopyUrl = async (asset: MediaAsset) => {
-    try {
-      if (navigator?.clipboard) {
-        await navigator.clipboard.writeText(asset.url);
-      } else {
-        const textarea = document.createElement("textarea");
-        textarea.value = asset.url;
-        textarea.setAttribute("readonly", "");
-        textarea.style.position = "absolute";
-        textarea.style.left = "-9999px";
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textarea);
+  const handleSubmitEntry = async (data: JournalEntryFormData) => {
+    if (mode === "edit" && selectedEntry) {
+      const success = await editEntry(data, selectedEntry.day);
+      if (success) {
+        handleEntrySaved(data);
       }
-      toast.success("URL copiée dans le presse-papiers");
-    } catch (error) {
-      console.error("❌ Impossible de copier l'URL", error);
-      toast.error("Impossible de copier l'URL");
+      return success;
     }
-  };
 
-  const hasAssets = assets.length > 0;
+    const success = await addEntry(data);
+    if (success) {
+      handleEntrySaved(data);
+    }
+    return success;
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 dark:from-amber-950 dark:via-orange-950 dark:to-red-950">
+    <>
       <Header />
-      <div className="pt-24 pb-16">
-        <div className="container mx-auto px-4 space-y-10">
-          <div className="text-center space-y-3">
-            <h1 className="text-4xl font-playfair font-semibold text-foreground">Studio de création</h1>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-950 to-black text-foreground pt-20">
+        <div className="container mx-auto px-4 py-16 space-y-12">
+          <div className="text-center space-y-4">
+            <h1 className="text-4xl sm:text-5xl font-playfair font-bold">Studio créateur</h1>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Gérez vos contenus hors ligne : bibliothèque de médias, diagnostic du journal et outils de secours.
+              Pilotez vos contenus, ajustez vos récits et préparez vos publications privées depuis une interface dédiée.
             </p>
           </div>
 
-          <Tabs defaultValue="medias" className="space-y-6">
-            <TabsList className="grid w-full gap-2 sm:w-auto sm:grid-cols-2">
-              <TabsTrigger value="medias">Médias</TabsTrigger>
-              <TabsTrigger value="journal">Journal</TabsTrigger>
+          <Tabs defaultValue="journal" className="space-y-8">
+            <TabsList className="grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
+              <TabsTrigger value="journal" className="flex items-center gap-2">
+                <NotebookPen className="h-4 w-4" />
+                Journal
+              </TabsTrigger>
+              <TabsTrigger value="map" className="flex items-center gap-2">
+                <MapIcon className="h-4 w-4" />
+                Carte
+              </TabsTrigger>
+              <TabsTrigger value="food" className="flex items-center gap-2">
+                <UtensilsCrossed className="h-4 w-4" />
+                Gastronomie
+              </TabsTrigger>
+              <TabsTrigger value="reading" className="flex items-center gap-2">
+                <BookOpen className="h-4 w-4" />
+                Lectures
+              </TabsTrigger>
+              <TabsTrigger value="media" className="flex items-center gap-2">
+                <Images className="h-4 w-4" />
+                Médias
+              </TabsTrigger>
+              <TabsTrigger value="diagnostics" className="flex items-center gap-2">
+                <Activity className="h-4 w-4" />
+                Diagnostics
+              </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="medias" className="space-y-6">
-              <Card className="shadow-elegant">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <UploadCloud className="h-5 w-5 text-primary" />
-                    Téléverser des images
-                  </CardTitle>
-                  <CardDescription>
-                    Glissez-déposez vos visuels ou sélectionnez des fichiers pour les compresser et les stocker localement.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div
-                    className={cn(
-                      "flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed p-8 text-center transition-colors",
-                      isDragging ? "border-primary bg-primary/5" : "border-muted",
-                      isUploading && "opacity-80"
-                    )}
-                    onDragEnter={(event) => {
-                      event.preventDefault();
-                      setIsDragging(true);
-                    }}
-                    onDragOver={(event) => event.preventDefault()}
-                    onDragLeave={(event) => {
-                      event.preventDefault();
-                      setIsDragging(false);
-                    }}
-                    onDrop={handleDrop}
-                  >
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      className="hidden"
-                      multiple
-                      accept="image/*"
-                      onChange={handleFileChange}
-                    />
-                    {isUploading ? (
-                      <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                    ) : (
-                      <FolderInput className="h-10 w-10 text-muted-foreground" />
-                    )}
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-foreground">Déposez vos images ici</p>
-                      <p className="text-xs text-muted-foreground">
-                        Compression automatique (~75%) et stockage hors ligne avec suivi de quota.
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={isUploading}
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      Sélectionner des fichiers
-                    </Button>
-                    <div className="w-full space-y-2 text-left text-xs text-muted-foreground">
-                      <div className="flex items-center justify-between">
-                        <span>
-                          {usage.assetCount} / {usage.maxAssets} média(s)
-                        </span>
-                        <span>
-                          {formatBytes(usage.totalBytes)} / {formatBytes(usage.maxBytes)}
-                        </span>
-                      </div>
-                      <Progress value={usagePercent} className="h-2" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+            <TabsContent value="journal" className="space-y-6">
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
 
-              <Card className="shadow-elegant">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <ImageIcon className="h-5 w-5 text-primary" />
-                    Médiathèque
-                  </CardTitle>
-                  <CardDescription>
-                    Visualisez, copiez ou supprimez les médias déjà stockés. Les modifications affectent immédiatement le formulaire du journal.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {!hasAssets ? (
-                    <div className="flex flex-col items-center justify-center space-y-3 py-12 text-center text-muted-foreground">
-                      <ImageIcon className="h-12 w-12 opacity-40" />
-                      <p>Aucun média pour l&apos;instant.</p>
-                      <p className="text-sm">Ajoutez vos premières images via le panneau de téléversement.</p>
-                    </div>
-                  ) : (
-                    <ScrollArea className="max-h-[480px] pr-4">
-                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        {assets.map((asset) => (
-                          <div
-                            key={asset.id}
-                            className="group relative overflow-hidden rounded-xl border bg-card shadow-sm transition-all hover:shadow-lg"
-                          >
-                            <div className="aspect-square overflow-hidden bg-muted">
-                              <img
-                                src={asset.url}
-                                alt={asset.name}
-                                loading="lazy"
-                                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                              />
-                            </div>
-                            <div className="space-y-1 px-4 py-3 text-sm">
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="truncate font-medium" title={asset.name}>
-                                  {asset.name}
-                                </span>
-                                <span className="text-xs text-muted-foreground">{formatBytes(asset.size)}</span>
-                              </div>
-                              <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                                <span>
-                                  {asset.width && asset.height ? `${asset.width}×${asset.height}` : ""}
-                                </span>
-                                {asset.lastUsedAt && (
-                                  <span>Utilisé le {new Date(asset.lastUsedAt).toLocaleDateString()}</span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-gradient-to-t from-black/60 via-black/40 to-transparent px-3 py-3 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="secondary"
-                                className="flex items-center gap-2"
-                                onClick={() => handleCopyUrl(asset)}
-                              >
-                                <Copy className="h-3.5 w-3.5" />
-                                Copier l&apos;URL
-                              </Button>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="destructive"
-                                className="flex items-center gap-2"
-                                onClick={() => {
-                                  if (confirm("Supprimer ce média ?")) {
-                                    deleteAsset(asset.id);
-                                  }
-                                }}
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                                Supprimer
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  )}
-                </CardContent>
-              </Card>
+              <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
+                <JournalEntryList
+                  entries={sortedEntries}
+                  onSelect={handleSelectEntry}
+                  onCreate={handleCreateNew}
+                  selectedDay={selectedEntry?.day ?? null}
+                  isLoading={isLoading}
+                />
+                <EntryFormPanel
+                  mode={mode}
+                  entry={selectedEntry}
+                  onSubmit={handleSubmitEntry}
+                  onCancel={handleCreateNew}
+                  onSuccess={handleEntrySaved}
+                />
+              </div>
             </TabsContent>
 
-            <TabsContent value="journal" className="space-y-6">
+            <TabsContent value="map">
+              <MapEditor />
+            </TabsContent>
+
+            <TabsContent value="food">
+              <FoodEditor />
+            </TabsContent>
+
+            <TabsContent value="reading">
+              <ReadingEditor />
+            </TabsContent>
+
+            <TabsContent value="media">
+              <MediaManager />
+            </TabsContent>
+
+            <TabsContent value="diagnostics" className="space-y-6">
+              <div className="flex flex-wrap items-center gap-3">
+                <Button variant="outline" onClick={reloadEntries} className="flex items-center gap-2">
+                  <RotateCw className="h-4 w-4" />
+                  Recharger les entrées
+                </Button>
+                {isLoading && <span className="text-sm text-muted-foreground">Actualisation en cours...</span>}
+              </div>
               <JournalDiagnostic />
-              <DataRecovery />
+ main
             </TabsContent>
           </Tabs>
         </div>
       </div>
-    </div>
+
+    </>
+ main
   );
 };
 

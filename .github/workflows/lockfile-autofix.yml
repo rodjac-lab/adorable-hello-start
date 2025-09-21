@@ -1,23 +1,22 @@
-name: Lockfile Fix
+name: Lockfile Auto-Fix
 on:
-  workflow_dispatch:
-    inputs:
-      target_branch:
-        description: 'Branch to fix (ex: feature/my-branch)'
-        required: true
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [ main ]
 
 permissions:
   contents: write
   pull-requests: write
 
 jobs:
-  fix-lock:
+  fix:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout target branch
+      - name: Checkout PR head
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.target_branch }}
+          ref: ${{ github.head_ref }}
 
       - name: Use Node.js from .nvmrc
         if: hashFiles('.nvmrc') != ''
@@ -44,8 +43,7 @@ jobs:
 
       - name: Regenerate package-lock.json
         run: npm install --package-lock-only
-
-      - name: Commit updated lockfile if changed
+      - name: Commit lockfile if changed
         run: |
           if ! git diff --quiet -- package-lock.json; then
             git config user.name "github-actions[bot]"
@@ -53,6 +51,4 @@ jobs:
             git add package-lock.json
             git commit -m "chore(lockfile): sync package-lock.json"
             git push
-          else
-            echo "Lockfile already up to date."
           fi
