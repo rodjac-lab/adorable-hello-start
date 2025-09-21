@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { useJournalEntries } from '@/hooks/useJournalEntries';
 import * as journalStorageModule from '@/lib/journalStorage';
+import * as contentStoreModule from '@/lib/contentStore';
 
 // Mock du module journalStorage
 vi.mock('@/lib/journalStorage', () => ({
@@ -9,6 +10,11 @@ vi.mock('@/lib/journalStorage', () => ({
   addJournalEntry: vi.fn(),
   updateJournalEntry: vi.fn(),
   getJournalStats: vi.fn()
+}));
+
+vi.mock('@/lib/contentStore', () => ({
+  getJournalEntriesWithSource: vi.fn(),
+  isCustomJournalDay: vi.fn()
 }));
 
 describe('SPÉCIFICATION: Hook useJournalEntries', () => {
@@ -33,19 +39,28 @@ describe('SPÉCIFICATION: Hook useJournalEntries', () => {
     }
   ];
 
+  const mockEntriesWithSource = mockEntries.map(entry => ({
+    ...entry,
+    source: 'custom' as const
+  }));
+
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(contentStoreModule.isCustomJournalDay).mockReturnValue(false);
   });
 
   describe('SPÉCIFICATION: Chargement initial des entrées', () => {
     it('devrait charger les entrées au montage du composant', () => {
       const mockLoadJournalEntries = vi.mocked(journalStorageModule.loadJournalEntries);
       mockLoadJournalEntries.mockReturnValue(mockEntries);
+      const mockGetJournalEntriesWithSource = vi.mocked(contentStoreModule.getJournalEntriesWithSource);
+      mockGetJournalEntriesWithSource.mockReturnValue(mockEntriesWithSource);
 
       const { result } = renderHook(() => useJournalEntries());
 
       expect(mockLoadJournalEntries).toHaveBeenCalledOnce();
-      expect(result.current.allEntries).toEqual(mockEntries);
+      expect(mockGetJournalEntriesWithSource).toHaveBeenCalledWith(mockEntries);
+      expect(result.current.allEntries).toEqual(mockEntriesWithSource);
       expect(result.current.isLoading).toBe(false);
       expect(result.current.error).toBeNull();
     });
@@ -71,6 +86,9 @@ describe('SPÉCIFICATION: Hook useJournalEntries', () => {
       const mockLoadJournalEntries = vi.mocked(journalStorageModule.loadJournalEntries);
       const unorderedEntries = [...mockEntries].reverse(); // Jour 2, puis jour 1
       mockLoadJournalEntries.mockReturnValue(unorderedEntries);
+      const mockGetJournalEntriesWithSource = vi.mocked(contentStoreModule.getJournalEntriesWithSource);
+      const unorderedWithSource = unorderedEntries.map(entry => ({ ...entry, source: 'custom' as const }));
+      mockGetJournalEntriesWithSource.mockReturnValue(unorderedWithSource);
 
       const { result } = renderHook(() => useJournalEntries());
 
@@ -84,6 +102,8 @@ describe('SPÉCIFICATION: Hook useJournalEntries', () => {
     it('devrait exposer allEntries avec les données de localisation nécessaires', () => {
       const mockLoadJournalEntries = vi.mocked(journalStorageModule.loadJournalEntries);
       mockLoadJournalEntries.mockReturnValue(mockEntries);
+      const mockGetJournalEntriesWithSource = vi.mocked(contentStoreModule.getJournalEntriesWithSource);
+      mockGetJournalEntriesWithSource.mockReturnValue(mockEntriesWithSource);
 
       const { result } = renderHook(() => useJournalEntries());
 
@@ -104,6 +124,8 @@ describe('SPÉCIFICATION: Hook useJournalEntries', () => {
     it('devrait retourner les bonnes données de test pour le géocodage', () => {
       const mockLoadJournalEntries = vi.mocked(journalStorageModule.loadJournalEntries);
       mockLoadJournalEntries.mockReturnValue(mockEntries);
+      const mockGetJournalEntriesWithSource = vi.mocked(contentStoreModule.getJournalEntriesWithSource);
+      mockGetJournalEntriesWithSource.mockReturnValue(mockEntriesWithSource);
 
       const { result } = renderHook(() => useJournalEntries());
 
@@ -126,11 +148,37 @@ describe('SPÉCIFICATION: Hook useJournalEntries', () => {
     it('devrait maintenir la compatibilité avec customEntries', () => {
       const mockLoadJournalEntries = vi.mocked(journalStorageModule.loadJournalEntries);
       mockLoadJournalEntries.mockReturnValue(mockEntries);
+      const mockGetJournalEntriesWithSource = vi.mocked(contentStoreModule.getJournalEntriesWithSource);
+      mockGetJournalEntriesWithSource.mockReturnValue(mockEntriesWithSource);
 
       const { result } = renderHook(() => useJournalEntries());
 
       // Vérifier la rétrocompatibilité
       expect(result.current.customEntries).toEqual(result.current.allEntries);
+    });
+
+    it('devrait distinguer les entrées canons et custom', () => {
+      const mockLoadJournalEntries = vi.mocked(journalStorageModule.loadJournalEntries);
+      const canonicalEntry = { ...mockEntries[0] };
+      const customEntry = { ...mockEntries[1] };
+      mockLoadJournalEntries.mockReturnValue([canonicalEntry, customEntry]);
+
+      const mockGetJournalEntriesWithSource = vi.mocked(contentStoreModule.getJournalEntriesWithSource);
+      mockGetJournalEntriesWithSource.mockReturnValue([
+        { ...canonicalEntry, source: 'canonical' as const },
+        { ...customEntry, source: 'custom' as const }
+      ]);
+
+      const mockIsCustomJournalDay = vi.mocked(contentStoreModule.isCustomJournalDay);
+      mockIsCustomJournalDay.mockImplementation(day => day === customEntry.day);
+
+      const { result } = renderHook(() => useJournalEntries());
+
+      expect(result.current.allEntries[0].source).toBe('canonical');
+      expect(result.current.customEntries).toHaveLength(1);
+      expect(result.current.customEntries[0].day).toBe(customEntry.day);
+      expect(result.current.isCustom(customEntry.day)).toBe(true);
+      expect(result.current.isCustom(canonicalEntry.day)).toBe(false);
     });
   });
 
@@ -138,6 +186,8 @@ describe('SPÉCIFICATION: Hook useJournalEntries', () => {
     it('devrait indiquer isLoading=true pendant le chargement initial', () => {
       const mockLoadJournalEntries = vi.mocked(journalStorageModule.loadJournalEntries);
       mockLoadJournalEntries.mockReturnValue([]);
+      const mockGetJournalEntriesWithSource = vi.mocked(contentStoreModule.getJournalEntriesWithSource);
+      mockGetJournalEntriesWithSource.mockReturnValue([]);
 
       const { result } = renderHook(() => useJournalEntries());
 
@@ -148,11 +198,14 @@ describe('SPÉCIFICATION: Hook useJournalEntries', () => {
     it('devrait permettre le rechargement manuel des entrées', () => {
       const mockLoadJournalEntries = vi.mocked(journalStorageModule.loadJournalEntries);
       mockLoadJournalEntries.mockReturnValue(mockEntries);
+      const mockGetJournalEntriesWithSource = vi.mocked(contentStoreModule.getJournalEntriesWithSource);
+      mockGetJournalEntriesWithSource.mockReturnValue(mockEntriesWithSource);
 
       const { result } = renderHook(() => useJournalEntries());
 
       // Vider les entrées et recharger
       mockLoadJournalEntries.mockReturnValue([]);
+      mockGetJournalEntriesWithSource.mockReturnValue([]);
       result.current.reloadEntries();
 
       expect(mockLoadJournalEntries).toHaveBeenCalledTimes(2); // Initial + reload

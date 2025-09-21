@@ -1,25 +1,34 @@
 import React from 'react';
-import { render } from '@testing-library/react';
-import { screen, fireEvent, waitFor } from '@testing-library/dom';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import Map from '@/components/Map';
-import * as useJournalEntriesModule from '@/hooks/useJournalEntries';
+
+ main
 import * as geocodingModule from '@/lib/geocoding';
+import { mapContentActions } from '@/lib/contentStore';
+import { forceRuntimeMode } from '@/utils/environment';
+import type { MapLocation } from '@/types/map';
 
-// Mock du hook useJournalEntries
-const mockUseJournalEntries = vi.fn();
-vi.mock('@/hooks/useJournalEntries', () => ({
-  useJournalEntries: () => mockUseJournalEntries()
+
+// Mock du hook useMapContent
+const mockUseMapContent = vi.fn();
+vi.mock('@/hooks/useMapContent', () => ({
+  useMapContent: () => mockUseMapContent()
+}));
+main
+
+const mapboxControlMock = vi.fn();
+const markerMock = vi.fn(() => ({
+  setLngLat: vi.fn().mockReturnThis(),
+  setPopup: vi.fn().mockReturnThis(),
+  addTo: vi.fn().mockReturnThis(),
+  remove: vi.fn()
+}));
+const popupMock = vi.fn(() => ({
+  setHTML: vi.fn().mockReturnThis()
 }));
 
-// Mock du service de géocodage
-const mockGeocodeJournalEntries = vi.fn();
-vi.mock('@/lib/geocoding', () => ({
-  geocodeJournalEntries: (entries: any, token: string) => mockGeocodeJournalEntries(entries, token)
-}));
-
-// Mock de mapbox-gl pour éviter les erreurs
 vi.mock('mapbox-gl', () => ({
   default: {
     accessToken: '',
@@ -27,85 +36,77 @@ vi.mock('mapbox-gl', () => ({
       addControl: vi.fn(),
       on: vi.fn(),
       remove: vi.fn(),
+      fitBounds: vi.fn(),
       addSource: vi.fn(),
-      addLayer: vi.fn()
+      addLayer: vi.fn(),
+      removeLayer: vi.fn(),
+      removeSource: vi.fn(),
+      getLayer: vi.fn(),
+      getSource: vi.fn()
     })),
-    NavigationControl: vi.fn(),
-    Marker: vi.fn(() => ({
-      setLngLat: vi.fn().mockReturnThis(),
-      setPopup: vi.fn().mockReturnThis(),
-      addTo: vi.fn().mockReturnThis()
-    })),
-    Popup: vi.fn(() => ({
-      setHTML: vi.fn().mockReturnThis()
+    NavigationControl: mapboxControlMock,
+    Marker: markerMock,
+    Popup: popupMock,
+    LngLatBounds: vi.fn(() => ({
+      extend: vi.fn(),
+      isEmpty: vi.fn(() => false)
     }))
   }
 }));
 
-describe('Map Component', () => {
-  const mockJournalEntries = [
+describe('Map component', () => {
+  const sampleEntries = [
     {
       day: 1,
-      date: '12 septembre 2024',
-      title: 'Arrivée en Jordanie',
-      location: 'Amman, Jordanie',
-      story: 'Premier jour en Jordanie...',
+      date: '15 janvier 2024',
+      title: 'Arrivée à Amman',
+      location: 'Amman',
+      story: 'Premier jour en Jordanie.',
       mood: 'Excité',
-      photos: []
-    },
-    {
-      day: 2,
-      date: '13 septembre 2024',
-      title: 'Visite du nord',
-      location: 'Jerash, Ajlun, Amman',
-      story: 'Exploration du patrimoine...',
-      mood: 'Émerveillé',
       photos: []
     }
   ];
 
-  const expectedGeocodeResults = [
+  const geocodedLocations: MapLocation[] = [
     {
       name: 'Amman',
-      coordinates: [35.9106, 31.9539],
+      coordinates: [31.9539, 35.9106],
       type: 'principal',
       day: 1,
-      journalEntry: mockJournalEntries[0]
-    },
-    {
-      name: 'Jerash',
-      coordinates: [35.8998, 32.2811],
-      type: 'secondaire',
-      day: 2,
-      journalEntry: mockJournalEntries[1]
-    },
-    {
-      name: 'Ajlun',
-      coordinates: [35.7519, 32.3326],
-      type: 'secondaire',
-      day: 2,
-      journalEntry: mockJournalEntries[1]
-    },
-    {
-      name: 'Amman',
-      coordinates: [35.9106, 31.9539],
-      type: 'principal',
-      day: 2,
-      journalEntry: mockJournalEntries[1]
+      journalEntry: sampleEntries[0]
     }
   ];
+
+  const createHookValue = (overrides: Partial<Record<string, any>> = {}) => ({
+    allEntries: mockJournalEntries,
+    customEntries: mockJournalEntries,
+    isCustom: vi.fn().mockReturnValue(false),
+    isLoading: false,
+    error: null,
+    addEntry: vi.fn(),
+    editEntry: vi.fn(),
+    getStats: vi.fn(),
+    reloadEntries: vi.fn(),
+    ...overrides,
+  });
 
   beforeEach(() => {
     vi.clearAllMocks();
+
+    mockUseMapContent.mockReturnValue({
+      entries: mockJournalEntries,
+      status: 'published',
+      isLoading: false,
+      error: null,
+      isStudioEditing: false,
+    });
   });
 
   describe('SPÉCIFICATION: Interface initiale sans token', () => {
     it('devrait afficher le formulaire de configuration Mapbox quand aucun token n\'est fourni', () => {
-      mockUseJournalEntries.mockReturnValue({
-        allEntries: mockJournalEntries,
-        isLoading: false,
-        error: null
-      });
+
+      mockUseJournalEntries.mockReturnValue(createHookValue());
+main
 
       render(<Map />);
 
@@ -116,11 +117,12 @@ describe('Map Component', () => {
     });
 
     it('devrait désactiver le bouton si aucune entrée de journal n\'existe', () => {
-      mockUseJournalEntries.mockReturnValue({
+
+      mockUseJournalEntries.mockReturnValue(createHookValue({
         allEntries: [],
-        isLoading: false,
-        error: null
-      });
+        customEntries: [],
+      }));
+main
 
       render(<Map />);
 
@@ -132,11 +134,9 @@ describe('Map Component', () => {
 
   describe('SPÉCIFICATION: Géocodage automatique des entrées du journal', () => {
     it('devrait analyser automatiquement les lieux du journal quand un token valide est fourni', async () => {
-      mockUseJournalEntries.mockReturnValue({
-        allEntries: mockJournalEntries,
-        isLoading: false,
-        error: null
-      });
+
+      mockUseJournalEntries.mockReturnValue(createHookValue());
+      main
 
       mockGeocodeJournalEntries.mockResolvedValue(expectedGeocodeResults);
 
@@ -166,61 +166,59 @@ describe('Map Component', () => {
     });
 
     it('devrait afficher les lieux détectés dans le modal de validation', async () => {
-      mockUseJournalEntries.mockReturnValue({
-        allEntries: mockJournalEntries,
-        isLoading: false,
-        error: null
-      });
+
+      mockUseJournalEntries.mockReturnValue(createHookValue());
+main
 
       mockGeocodeJournalEntries.mockResolvedValue(expectedGeocodeResults);
 
       render(<Map />);
+ main
 
-      const tokenInput = screen.getByPlaceholderText(/pk\.eyJ1/);
-      fireEvent.change(tokenInput, { target: { value: 'pk.test_token_valid' } });
+  it('affiche le configurateur en mode studio', () => {
+    render(<Map />);
+    expect(screen.getByText('Atelier de géocodage')).toBeInTheDocument();
+    expect(screen.getByLabelText('Token Mapbox public')).toBeInTheDocument();
+  });
 
-      const analyzeButton = screen.getByText('Analyser les lieux du journal');
-      fireEvent.click(analyzeButton);
+  it('désactive le bouton de géocodage sans entrées', () => {
+    mockUseJournalEntries.mockReturnValueOnce({ allEntries: [], isLoading: false, error: null });
+    render(<Map />);
+    expect(screen.getByText('Lancer le géocodage')).toBeDisabled();
+  });
 
-      // Attendre que le modal apparaisse avec les lieux détectés
-      await waitFor(() => {
-        expect(screen.getByText('4 marqueur(s) détecté(s)')).toBeInTheDocument();
-        expect(screen.getByText('Jour 1')).toBeInTheDocument();
-        expect(screen.getByText('Jour 2')).toBeInTheDocument();
-      });
+  it('lance le géocodage et met à jour le panneau de validation', async () => {
+    const geocodeSpy = vi.spyOn(geocodingModule, 'geocodeJournalEntries').mockImplementation(async () => {
+      mapContentActions.startGeocoding();
+      mapContentActions.completeGeocoding({ pending: geocodedLocations, failed: [], error: undefined });
+      return geocodedLocations;
     });
 
+
     it('devrait gérer les erreurs de géocodage avec un message d\'erreur explicite', async () => {
-      mockUseJournalEntries.mockReturnValue({
-        allEntries: mockJournalEntries,
-        isLoading: false,
-        error: null
-      });
+
+      mockUseJournalEntries.mockReturnValue(createHookValue());
+ main
 
       const mockAlert = vi.spyOn(window, 'alert').mockImplementation(() => {});
       mockGeocodeJournalEntries.mockRejectedValue(new Error('Token invalide'));
+ main
 
-      render(<Map />);
+    const tokenInput = screen.getByPlaceholderText(/pk\.eyJ1/);
+    fireEvent.change(tokenInput, { target: { value: 'pk.test_token' } });
 
-      const tokenInput = screen.getByPlaceholderText(/pk\.eyJ1/);
-      fireEvent.change(tokenInput, { target: { value: 'pk.invalid_token' } });
+    const geocodeButton = screen.getByText('Lancer le géocodage');
+    fireEvent.click(geocodeButton);
 
-      const analyzeButton = screen.getByText('Analyser les lieux du journal');
-      fireEvent.click(analyzeButton);
-
-      await waitFor(() => {
-        expect(mockAlert).toHaveBeenCalledWith('Erreur lors du géocodage: Error: Token invalide');
-      });
-
-      mockAlert.mockRestore();
+    await waitFor(() => {
+      expect(geocodeSpy).toHaveBeenCalledWith(sampleEntries, 'pk.test_token', expect.any(Object));
     });
 
+
     it('devrait afficher un avertissement si aucun lieu n\'est géocodé avec succès', async () => {
-      mockUseJournalEntries.mockReturnValue({
-        allEntries: mockJournalEntries,
-        isLoading: false,
-        error: null
-      });
+
+      mockUseJournalEntries.mockReturnValue(createHookValue());
+ main
 
       const mockAlert = vi.spyOn(window, 'alert').mockImplementation(() => {});
       mockGeocodeJournalEntries.mockResolvedValue([]);
@@ -245,10 +243,12 @@ describe('Map Component', () => {
 
   describe('SPÉCIFICATION: États de chargement et feedback utilisateur', () => {
     it('devrait afficher un indicateur de chargement pendant le géocodage', async () => {
-      mockUseJournalEntries.mockReturnValue({
-        allEntries: mockJournalEntries,
+      mockUseMapContent.mockReturnValue({
+        entries: mockJournalEntries,
+        status: 'published',
         isLoading: false,
-        error: null
+        error: null,
+        isStudioEditing: false,
       });
 
       // Mock qui attend indéfiniment pour pouvoir tester l'état de chargement
@@ -273,5 +273,6 @@ describe('Map Component', () => {
       // Résoudre la promesse pour nettoyer
       resolveGeocode!(expectedGeocodeResults);
     });
+ main
   });
 });

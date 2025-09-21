@@ -39,9 +39,9 @@ const DataRecovery = () => {
     URL.revokeObjectURL(url);
   };
 
-  const cleanTestData = () => {
+  const cleanTestData = async () => {
     try {
-      const cleaned = cleanupTestData();
+      const cleaned = await cleanupTestData();
       console.log('🧹 Données nettoyées:', cleaned);
       setRecoveryInfo(prev => ({ ...prev, cleaned }));
       window.location.reload();

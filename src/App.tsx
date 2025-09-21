@@ -8,29 +8,38 @@ import Journal from "./pages/Journal";
 import Food from "./pages/Food";
 import Gallery from "./pages/Gallery";
 import Recommendations from "./pages/Recommendations";
+import Studio from "./pages/Studio";
 import NotFound from "./pages/NotFound";
+import Studio from "./pages/Studio";
 
 const queryClient = new QueryClient();
 
-export const AppRoutes = () => (
-  <Routes>
-    <Route path="/" element={<Index />} />
-    <Route path="/journal" element={<Journal />} />
-    <Route path="/food" element={<Food />} />
-    <Route path="/gallery" element={<Gallery />} />
-    <Route path="/recommendations" element={<Recommendations />} />
-    {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-    <Route path="*" element={<NotFound />} />
-  </Routes>
-);
 
-const App = () => (
+interface AppProps {
+  studioVisible?: boolean;
+}
+
+const App = ({ studioVisible = false }: AppProps) => (
+main
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <AppRoutes />
+
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/journal" element={<Journal />} />
+          <Route path="/food" element={<Food />} />
+          <Route path="/gallery" element={<Gallery />} />
+          <Route path="/recommendations" element={<Recommendations />} />
+
+          {studioVisible && <Route path="/studio" element={<Studio />} />}
+main
+          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+main
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

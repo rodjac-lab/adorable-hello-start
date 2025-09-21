@@ -18,14 +18,15 @@ const Journal = () => {
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   const [showDiagnostic, setShowDiagnostic] = useState(false);
   
-  const { 
-    allEntries, 
-    customEntries, 
-    isLoading, 
-    error, 
-    addEntry, 
-    editEntry, 
-    getStats, 
+  const {
+    allEntries,
+    customEntries,
+    isCustom,
+    isLoading,
+    error,
+    addEntry,
+    editEntry,
+    getStats,
     reloadEntries 
   } = useJournalEntries();
 
@@ -174,7 +175,7 @@ const Journal = () => {
                     <div className="flex-1">
                       <CardTitle className="font-serif text-3xl mb-3 text-foreground tracking-wide">
                         Jour {entry.day} — {entry.title}
-                        {customEntries.some(custom => custom.day === entry.day) && (
+                        {isCustom(entry.day) && (
                           <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-1 rounded-full font-normal">
                             Modifié
                           </span>
@@ -247,7 +248,7 @@ const Journal = () => {
                   )}
                   
                   {/* Photos for custom entries */}
-                  {entry.photos && entry.photos.length > 0 && customEntries.some(custom => custom.day === entry.day) && (
+                  {entry.photos && entry.photos.length > 0 && isCustom(entry.day) && (
                     <div className="mt-6">
                       <h4 className="font-semibold mb-3 text-lg">📸 Photos</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -310,7 +311,7 @@ const Journal = () => {
 
           <div className="text-center mt-12">
             <p className="text-muted-foreground">
-              {customEntries.length > 0 
+              {customEntries.length > 0
                 ? `${allEntries.length} entrées au total (${customEntries.length} personnalisées) - Le voyage continue !`
                 : "Plus d'entrées bientôt... Le voyage continue !"
               }

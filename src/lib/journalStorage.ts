@@ -15,95 +15,19 @@ const STORAGE_KEY = 'journalEntries';
 const BACKUP_KEY = 'journalEntries_backup';
 const BACKUP_2_KEY = 'journalEntries_backup2';
 const VERSION_KEY = 'journalStorage_version';
-const CURRENT_VERSION = '2.1';
 
-// Pas d'entrées legacy - les vraies données sont dans localStorage
-const LEGACY_ENTRIES: JournalEntry[] = [];
-
-type SnapshotFile = {
-  entries?: JournalEntry[];
-};
-
-const getSnapshotEntries = (): JournalEntry[] => {
-  const file = (snapshotFile as SnapshotFile) ?? { entries: [] };
-  if (!file.entries || !Array.isArray(file.entries)) {
-    return [];
-  }
-
-  return file.entries
-    .filter(entry => {
-      return (
-        entry &&
-        typeof entry.day === 'number' &&
-        typeof entry.title === 'string' &&
-        typeof entry.date === 'string' &&
-        typeof entry.location === 'string' &&
-        typeof entry.story === 'string' &&
-        typeof entry.mood === 'string'
-      );
-    })
-    .map(entry => ({
-      ...entry,
-      photos: Array.isArray(entry.photos) ? entry.photos : [],
-      link: entry.link,
-    }))
-    .sort((a, b) => a.day - b.day);
-};
-
-const seedFromSnapshot = (): JournalEntry[] => {
-  const snapshotEntries = getSnapshotEntries();
-  if (snapshotEntries.length === 0) {
-    return [];
-  }
-
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshotEntries));
-    localStorage.setItem(VERSION_KEY, CURRENT_VERSION);
-    console.log('🌐 Snapshot chargé dans le localStorage');
-  } catch (error) {
-    console.warn('⚠️ Impossible d\'écrire le snapshot dans le localStorage:', error);
-  }
-
-  return snapshotEntries;
-};
-
-/**
- * Migration automatique - Ajoute les jours 1 et 2 s'ils n'existent pas déjà
- */
-const runMigration = (): void => {
-  try {
-    const version = localStorage.getItem(VERSION_KEY);
-    if (version === CURRENT_VERSION) {
-      console.log('✅ Storage version up to date');
-      return;
-    }
-
-    console.log('🔄 Running migration to version', CURRENT_VERSION);
-    
-    // Charger les entrées existantes
-    const existingEntries = loadJournalEntriesRaw();
-    const existingDays = new Set(existingEntries.map(e => e.day));
-    
-    // Ajouter les jours manquants depuis LEGACY_ENTRIES
-    const entriesToAdd = LEGACY_ENTRIES.filter(entry => !existingDays.has(entry.day));
-    
-    if (entriesToAdd.length > 0) {
-      const allEntries = [...existingEntries, ...entriesToAdd].sort((a, b) => a.day - b.day);
-      const dataToSave = JSON.stringify(allEntries);
-      localStorage.setItem(STORAGE_KEY, dataToSave);
-      console.log(`✅ Migration complete: Added ${entriesToAdd.length} legacy entries`);
-    } else {
-      console.log('✅ Migration complete: No legacy entries to add');
-    }
-    
-    // Marquer la migration comme terminée
-    localStorage.setItem(VERSION_KEY, CURRENT_VERSION);
-  } catch (error) {
-    console.error('❌ Migration failed:', error);
-  }
-};
+const CURRENT_VERSION = '3.0';
+ main
 
 import { compressImageUrl } from './imageCompression';
+import {
+  clearContentStoreState,
+  initializeContentStore,
+  markJournalDayAsCustom,
+  registerImportedJournalEntries,
+  syncJournalSources,
+  getCanonicalJournalEntries,
+} from './contentStore';
 
 /**
  * Convertit blob URLs en base64 pour la persistance et nettoie les photos manquantes
@@ -304,9 +228,9 @@ const loadJournalEntriesRaw = (): JournalEntry[] => {
 export const loadJournalEntries = (): JournalEntry[] => {
   try {
     console.log('🔍 Loading journal entries...');
-    
-    // Exécuter la migration si nécessaire
-    runMigration();
+
+    // Initialiser le magasin de contenu (injection des entrées canons au besoin)
+    initializeContentStore();
     
     const saved = localStorage.getItem(STORAGE_KEY);
     console.log('📖 Raw data from storage:', saved?.length ? `${saved.length} chars` : 'empty');
@@ -364,7 +288,9 @@ export const loadJournalEntries = (): JournalEntry[] => {
       saveJournalEntries(validEntries);
     }
 
-    console.log('🎯 Final loaded entries:', validEntries.map(e => `Day ${e.day}: ${e.title}`));
+    const entriesWithSource = syncJournalSources(validEntries);
+
+    console.log('🎯 Final loaded entries:', entriesWithSource.map(e => `Day ${e.day}: ${e.title} (${e.source})`));
     return validEntries;
   } catch (error) {
     console.error('❌ Error loading journal entries:', error);
@@ -391,7 +317,9 @@ export const recoverFromBackup = (): JournalEntry[] => {
         if (Array.isArray(parsed1) && parsed1.length > 0) {
           console.log('✅ Successfully recovered from backup 1:', parsed1.length, 'entries');
           localStorage.setItem(STORAGE_KEY, backup1);
-          return parsed1;
+          const entries = parsed1 as JournalEntry[];
+          syncJournalSources(entries);
+          return entries;
         }
       } catch (e) {
         console.warn('⚠️ Backup 1 corrupted, trying backup 2...');
@@ -406,25 +334,27 @@ export const recoverFromBackup = (): JournalEntry[] => {
         if (Array.isArray(parsed2) && parsed2.length > 0) {
           console.log('✅ Successfully recovered from backup 2:', parsed2.length, 'entries');
           localStorage.setItem(STORAGE_KEY, backup2);
-          return parsed2;
+          const entries = parsed2 as JournalEntry[];
+          syncJournalSources(entries);
+          return entries;
         }
       } catch (e) {
         console.warn('⚠️ Backup 2 corrupted, using legacy entries...');
       }
     }
+
+
+    // Dernier recours : réinjecter les entrées canons
+    console.log('📦 Using canonical entries as last resort');
+    const canonical = getCanonicalJournalEntries().map(entry => {
+      const { source: _source, ...rest } = entry;
+      return rest;
+    });
+    void saveJournalEntries(canonical);
+    syncJournalSources(canonical);
+    return canonical;
     
-    // Dernier recours : utiliser le snapshot embarqué ou les entrées legacy
-    const snapshotEntries = getSnapshotEntries();
-    if (snapshotEntries.length > 0) {
-      console.log('📦 Using bundled snapshot as last resort');
-      seedFromSnapshot();
-      return snapshotEntries;
-    }
-
-    console.log('📦 Using legacy entries as last resort');
-    saveJournalEntries(LEGACY_ENTRIES);
-    return LEGACY_ENTRIES;
-
+main
   } catch (error) {
     console.error('❌ All recovery attempts failed:', error);
     return [];
@@ -457,7 +387,14 @@ export const addJournalEntry = async (newEntry: JournalEntry): Promise<boolean> 
   // Trier par jour
   updatedEntries.sort((a, b) => a.day - b.day);
   
-  return await saveJournalEntries(updatedEntries);
+  const success = await saveJournalEntries(updatedEntries);
+
+  if (success) {
+    markJournalDayAsCustom(newEntry.day);
+    syncJournalSources(updatedEntries);
+  }
+
+  return success;
 };
 
 /**
@@ -481,7 +418,14 @@ export const updateJournalEntry = async (updatedEntry: JournalEntry): Promise<bo
     // Trier par jour
     updatedEntries.sort((a, b) => a.day - b.day);
     
-    return await saveJournalEntries(updatedEntries);
+    const success = await saveJournalEntries(updatedEntries);
+
+    if (success) {
+      markJournalDayAsCustom(updatedEntry.day);
+      syncJournalSources(updatedEntries);
+    }
+
+    return success;
   } else {
     // Créer nouvelle entrée si elle n'existe pas
     console.log('🆕 Entry not found, creating new one');
@@ -528,8 +472,9 @@ export const diagnosticTools = {
   // Forcer la migration
   forceMigration: () => {
     localStorage.removeItem(VERSION_KEY);
-    runMigration();
-    return loadJournalEntries();
+    initializeContentStore();
+    const entries = loadJournalEntries();
+    return entries;
   },
 
   // Nettoyer et réinitialiser
@@ -537,7 +482,8 @@ export const diagnosticTools = {
     [STORAGE_KEY, BACKUP_KEY, BACKUP_2_KEY, VERSION_KEY].forEach(key => {
       localStorage.removeItem(key);
     });
-    runMigration();
+    clearContentStoreState();
+    initializeContentStore();
     return loadJournalEntries();
   },
 
@@ -581,10 +527,12 @@ export const diagnosticTools = {
       });
 
       console.log(`📥 Importing ${validEntries.length} valid entries`);
-      
+
       const success = await saveJournalEntries(validEntries);
       if (success) {
         console.log('✅ Import successful');
+        registerImportedJournalEntries(validEntries);
+        syncJournalSources(validEntries);
         return { success: true, imported: validEntries.length };
       } else {
         throw new Error('Save failed');
