@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { 
   parseLocationString, 
   parseJournalEntries, 
@@ -7,6 +7,7 @@ import {
   geocodeJournalEntries
 } from '@/lib/geocoding';
 import { JournalEntry } from '@/lib/journalStorage';
+import { forceRuntimeMode } from '@/utils/environment';
 
 // Mock fetch pour les tests de l'API Mapbox
 global.fetch = vi.fn();
@@ -35,6 +36,11 @@ describe('SPÉCIFICATION: Service de géocodage intelligent', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    forceRuntimeMode('studio');
+  });
+
+  afterEach(() => {
+    forceRuntimeMode(null);
   });
 
   describe('SPÉCIFICATION: Parsing des chaînes de lieux', () => {
@@ -138,7 +144,7 @@ describe('SPÉCIFICATION: Service de géocodage intelligent', () => {
         json: () => Promise.resolve(mockMapboxResponse)
       });
 
-      const result = await geocodeLocation('Lieu Test', 'pk.test_token');
+    const result = await geocodeLocation('Lieu Test', 'pk.test_token');
       
       expect(result).toEqual({
         name: 'Lieu Test, Jordan',
@@ -158,7 +164,7 @@ describe('SPÉCIFICATION: Service de géocodage intelligent', () => {
         status: 401
       });
 
-      const result = await geocodeLocation('Lieu Inexistant', 'invalid_token');
+    const result = await geocodeLocation('Lieu Inexistant', 'invalid_token');
       expect(result).toBeNull();
     });
 
@@ -168,7 +174,7 @@ describe('SPÉCIFICATION: Service de géocodage intelligent', () => {
         json: () => Promise.resolve({ features: [] })
       });
 
-      const result = await geocodeLocation('Lieu Inexistant', 'pk.test_token');
+    const result = await geocodeLocation('Lieu Inexistant', 'pk.test_token');
       expect(result).toBeNull();
     });
   });
@@ -187,7 +193,9 @@ describe('SPÉCIFICATION: Service de géocodage intelligent', () => {
         })
       });
 
-      const result = await geocodeJournalEntries(sampleJournalEntries, 'pk.test_token');
+      const result = await geocodeJournalEntries(sampleJournalEntries, 'pk.test_token', {
+        persistToStore: false
+      });
       
       expect(result).toHaveLength(4); // 2 lieux jour 1 + 3 lieux jour 2 - 1 dupliqué
       
@@ -224,7 +232,10 @@ describe('SPÉCIFICATION: Service de géocodage intelligent', () => {
         })
       });
 
-      await geocodeJournalEntries(sampleJournalEntries, 'pk.test_token', mockProgress);
+      await geocodeJournalEntries(sampleJournalEntries, 'pk.test_token', {
+        onProgress: mockProgress,
+        persistToStore: false
+      });
       
       // La fonction de progression devrait être appelée plusieurs fois
       expect(mockProgress).toHaveBeenCalled();
@@ -235,7 +246,9 @@ describe('SPÉCIFICATION: Service de géocodage intelligent', () => {
     });
 
     it('devrait retourner un tableau vide si aucune entrée n\'est fournie', async () => {
-      const result = await geocodeJournalEntries([], 'pk.test_token');
+      const result = await geocodeJournalEntries([], 'pk.test_token', {
+        persistToStore: false
+      });
       expect(result).toEqual([]);
     });
   });
