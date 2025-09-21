@@ -13,14 +13,36 @@ jobs:
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout PR head
+        uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref }}
-      - uses: actions/setup-node@v4
+
+      - name: Use Node.js from .nvmrc
+        if: hashFiles('.nvmrc') != ''
+        uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
-      - run: npm install --package-lock-only
+
+      - name: Use Node.js 20 (fallback)
+        if: hashFiles('.nvmrc') == ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Align npm to packageManager version
+        run: |
+          PM=$(node -p "try { require('./package.json').packageManager } catch (e) { '' }")
+          if [[ "$PM" == npm@* ]]; then
+            echo "Aligning npm to $PM"
+            npm install -g "$PM"
+          fi
+          npm -v
+
+      - name: Regenerate package-lock.json
+        run: npm install --package-lock-only
       - name: Commit lockfile if changed
         run: |
           if ! git diff --quiet -- package-lock.json; then

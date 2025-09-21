@@ -12,10 +12,27 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Use Node.js from .nvmrc
+        if: hashFiles('.nvmrc') != ''
         uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
+
+      - name: Use Node.js 20 (fallback)
+        if: hashFiles('.nvmrc') == ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Align npm to packageManager version
+        run: |
+          PM=$(node -p "try { require('./package.json').packageManager } catch (e) { '' }")
+          if [[ "$PM" == npm@* ]]; then
+            echo "Aligning npm to $PM"
+            npm install -g "$PM"
+          fi
+          npm -v
 
       - name: Show Node & npm versions
         run: node -v && npm -v
