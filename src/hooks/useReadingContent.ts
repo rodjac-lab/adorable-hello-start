@@ -1,19 +1,85 @@
-import { useSyncExternalStore } from 'react';
-import { contentStore } from '@/store/contentStore';
-import type { ReadingContentState } from '@/store/contentStore';
 
-interface UseReadingContentSnapshot extends ReadingContentState {
-  isStudioEditing: boolean;
-}
+import { useCallback, useEffect, useState } from 'react';
+import {
+  type ReadingItem,
+  getReadingItems,
+  saveReadingItem,
+  removeReadingItem,
+  subscribeToContentStore,
+} from '@/lib/contentStore';
 
-const getSnapshot = (): UseReadingContentSnapshot => {
-  const state = contentStore.getState();
+export const useReadingContent = () => {
+  const [items, setItems] = useState<ReadingItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const data = getReadingItems();
+      setItems(data);
+      setError(null);
+    } catch (err) {
+      console.error('Failed to load reading list', err);
+      setError('Erreur lors du chargement des lectures');
+    } finally {
+      setIsLoading(false);
+    }
+
+    const unsubscribe = subscribeToContentStore(state => {
+      setItems(state.readingList);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  const reload = useCallback(() => {
+    setIsLoading(true);
+    try {
+      const data = getReadingItems();
+      setItems(data);
+      setError(null);
+    } catch (err) {
+      console.error('Failed to reload reading list', err);
+      setError('Erreur lors du rechargement des lectures');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const saveItem = useCallback((item: Partial<ReadingItem>) => {
+    try {
+      const saved = saveReadingItem(item);
+      setItems(getReadingItems());
+      setError(null);
+      return saved;
+    } catch (err) {
+      console.error('Failed to save reading item', err);
+      setError('Erreur lors de la sauvegarde de la lecture');
+      throw err;
+    }
+  }, []);
+
+  const deleteItem = useCallback((id: string) => {
+    try {
+      removeReadingItem(id);
+      setItems(getReadingItems());
+      setError(null);
+    } catch (err) {
+      console.error('Failed to delete reading item', err);
+      setError('Erreur lors de la suppression de la lecture');
+      throw err;
+    }
+  }, []);
+
   return {
-    ...state.reading,
-    isStudioEditing: state.studio.isEditing,
+    items,
+    isLoading,
+    error,
+    reload,
+    saveItem,
+    deleteItem,
   };
 };
-
-export const useReadingContent = (): UseReadingContentSnapshot => {
-  return useSyncExternalStore(contentStore.subscribe, getSnapshot, getSnapshot);
-};
+ main

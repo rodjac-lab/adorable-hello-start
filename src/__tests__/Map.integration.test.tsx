@@ -89,9 +89,12 @@ describe('Map Integration Tests', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUseMapContent.mockReturnValue({
-      entries: mockEntries,
-      status: 'published',
+
+    mockUseJournalEntries.mockReturnValue({
+      allEntries: mockEntries,
+      customEntries: mockEntries,
+      isCustom: vi.fn().mockReturnValue(false),
+main
       isLoading: false,
       error: null,
       isStudioEditing: false,

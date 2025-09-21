@@ -1,36 +1,85 @@
-import { useEffect, useSyncExternalStore } from 'react';
-import { contentStore } from '@/store/contentStore';
-import type { MapContentState } from '@/store/contentStore';
-import { useJournalEntries } from './useJournalEntries';
 
-interface UseMapContentSnapshot extends MapContentState {
-  isStudioEditing: boolean;
-}
+import { useCallback, useEffect, useState } from 'react';
+import {
+  type MapLocationContent,
+  getMapLocations,
+  saveMapLocation,
+  removeMapLocation,
+  subscribeToContentStore,
+} from '@/lib/contentStore';
 
-const getSnapshot = (): UseMapContentSnapshot => {
-  const state = contentStore.getState();
-  return {
-    ...state.map,
-    isStudioEditing: state.studio.isEditing,
-  };
-};
-
-export const useMapContent = (): UseMapContentSnapshot => {
-  const storeSnapshot = useSyncExternalStore(contentStore.subscribe, getSnapshot, getSnapshot);
-  const { allEntries, isLoading, error } = useJournalEntries();
+export const useMapContent = () => {
+  const [locations, setLocations] = useState<MapLocationContent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    contentStore.updateMap({
-      entries: allEntries,
-      isLoading,
-      error,
+    try {
+      const data = getMapLocations();
+      setLocations(data);
+      setError(null);
+    } catch (err) {
+      console.error('Failed to load map locations', err);
+      setError('Erreur lors du chargement des lieux cartographiques');
+    } finally {
+      setIsLoading(false);
+    }
+
+    const unsubscribe = subscribeToContentStore(state => {
+      setLocations(state.mapLocations);
     });
-  }, [allEntries, isLoading, error]);
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  const reload = useCallback(() => {
+    setIsLoading(true);
+    try {
+      const data = getMapLocations();
+      setLocations(data);
+      setError(null);
+    } catch (err) {
+      console.error('Failed to reload map locations', err);
+      setError('Erreur lors du rechargement des lieux cartographiques');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const saveLocation = useCallback((location: Partial<MapLocationContent>) => {
+    try {
+      const saved = saveMapLocation(location);
+      setLocations(getMapLocations());
+      setError(null);
+      return saved;
+    } catch (err) {
+      console.error('Failed to save map location', err);
+      setError('Erreur lors de la sauvegarde du lieu cartographique');
+      throw err;
+    }
+  }, []);
+
+  const deleteLocation = useCallback((id: string) => {
+    try {
+      removeMapLocation(id);
+      setLocations(getMapLocations());
+      setError(null);
+    } catch (err) {
+      console.error('Failed to delete map location', err);
+      setError('Erreur lors de la suppression du lieu cartographique');
+      throw err;
+    }
+  }, []);
 
   return {
-    ...storeSnapshot,
-    entries: allEntries,
-    isLoading: storeSnapshot.isLoading || isLoading,
-    error: storeSnapshot.error ?? error ?? null,
+    locations,
+    isLoading,
+    error,
+    reload,
+    saveLocation,
+    deleteLocation,
+    main
   };
 };

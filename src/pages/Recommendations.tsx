@@ -2,34 +2,16 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Header } from "@/components/Header";
-import { ReadingCard } from "@/components/ReadingCard";
-import { useReadingContent } from "@/hooks/useReadingContent";
 
-const DraftCallout = ({ isStudioEditing }: { isStudioEditing: boolean }) => (
-  <Card className="max-w-2xl mx-auto text-center shadow-lg">
-    <CardHeader>
-      <CardTitle className="text-2xl">✍️ Contenu en cours de rédaction</CardTitle>
-    </CardHeader>
-    <CardContent>
-      <p className="text-muted-foreground">
-        Cette section est actuellement en cours de rédaction.
-        {isStudioEditing ? (
-          <>
-            {" "}
-            Ajoutez de nouvelles recommandations dans l'espace
-            {" "}
-            <Link to="/studio" className="text-primary underline font-medium">
-              Studio
-            </Link>
-            .
-          </>
-        ) : (
-          " Revenez bientôt pour découvrir mes lectures favorites !"
-        )}
-      </p>
-    </CardContent>
-  </Card>
-);
+import { getReadingRecommendations } from "@/lib/contentStore";
+
+const Recommendations = () => {
+  const books = getReadingRecommendations();
+
+  const getRatingStars = (rating: number) => {
+    return "⭐".repeat(rating);
+  };
+main
 
 const Recommendations = () => {
   const { recommendations, status, isLoading, error, isStudioEditing } = useReadingContent();

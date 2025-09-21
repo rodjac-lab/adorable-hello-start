@@ -2,35 +2,16 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Header } from "@/components/Header";
-import { FoodExperienceCard } from "@/components/FoodExperienceCard";
-import { useFoodContent } from "@/hooks/useFoodContent";
 
-const DraftCallout = ({ isStudioEditing }: { isStudioEditing: boolean }) => (
-  <Card className="max-w-2xl mx-auto text-center shadow-lg">
-    <CardHeader>
-      <CardTitle className="text-2xl">✍️ Contenu en cours de rédaction</CardTitle>
-    </CardHeader>
-    <CardContent>
-      <p className="text-muted-foreground">
-        Cette section est actuellement en cours de rédaction.
-        {isStudioEditing ? (
-          <>
-            {" "}
-            Rendez-vous dans l'espace
-            {" "}
-            <Link to="/studio" className="text-primary underline font-medium">
-              Studio
-            </Link>
-            {" "}
-            pour ajouter vos expériences culinaires.
-          </>
-        ) : (
-          " Revenez bientôt pour découvrir mes coups de cœur gastronomiques !"
-        )}
-      </p>
-    </CardContent>
-  </Card>
-);
+import { getFoodExperiences } from "@/lib/contentStore";
+
+const Food = () => {
+  const foodExperiences = getFoodExperiences();
+
+  const getRatingStars = (rating: number) => {
+    return "⭐".repeat(rating);
+  };
+ main
 
 const Food = () => {
   const { experiences, status, isLoading, error, isStudioEditing } = useFoodContent();
