@@ -1,701 +1,361 @@
-import { compressImageUrl } from './imageCompression';
+import type { JournalEntry } from '@/lib/journalStorage';
 
-const STORAGE_KEY = 'contentStore:v1';
-const BACKUP_KEY = `${STORAGE_KEY}:backup1`;
-const BACKUP_2_KEY = `${STORAGE_KEY}:backup2`;
-const VERSION_KEY = `${STORAGE_KEY}:version`;
-const LEGACY_JOURNAL_KEY = 'journalEntries';
-export const CONTENT_STORE_VERSION = '1.0.0';
+export type ContentSource = 'canonical' | 'custom';
 
-const isBrowser = typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
-
-const nowIso = () => new Date().toISOString();
-
-const isStringArray = (value: unknown): value is string[] => Array.isArray(value) && value.every(item => typeof item === 'string');
-
-const generateId = () => {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return `id_${Math.random().toString(36).slice(2)}`;
-};
-
-export interface MediaAsset {
-  id: string;
-  type: 'image' | 'video' | 'audio' | 'document';
-  title: string;
-  url: string;
-  description?: string;
-  tags?: string[];
-  relatedDay?: number;
-  capturedAt?: string;
-  location?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  metadata?: Record<string, unknown>;
+export interface JournalContentEntry extends JournalEntry {
+  source: ContentSource;
 }
 
-export interface JournalEntryContent {
+export interface PlaceReference {
   day: number;
-  date: string;
-  title: string;
-  location: string;
-  story: string;
-  mood: string;
-  photos?: string[];
-  link?: string;
-  mediaIds?: string[];
-  mapLocationIds?: string[];
-  isCustom?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
+  name: string;
+  summary: string;
+  coordinates: [number, number];
+  source: ContentSource;
 }
 
 export interface FoodExperience {
-  id: string;
   name: string;
+  type: string;
   description: string;
-  experience?: string;
-  rating?: number;
-  location?: string;
-  price?: string;
-  date?: string;
-  relatedDay?: number;
-  tags?: string[];
-  mediaIds?: string[];
-  notes?: string;
-  createdAt?: string;
-  updatedAt?: string;
+  experience: string;
+  rating: number;
+  location: string;
+  price: string;
+  source: ContentSource;
 }
 
-export interface ReadingItem {
-  id: string;
+export interface ReadingRecommendation {
   title: string;
-  author?: string;
-  type?: string;
-  description?: string;
-  reason?: string;
-  link?: string;
-  rating?: number;
-  tags?: string[];
-  relatedDay?: number;
-  mediaIds?: string[];
-  createdAt?: string;
-  updatedAt?: string;
+  author: string;
+  type: string;
+  description: string;
+  why: string;
+  amazon: string;
+  rating: number;
+  source: ContentSource;
 }
 
-export interface MapLocationContent {
-  id: string;
-  name: string;
-  coordinates: [number, number];
-  day?: number;
-  relatedEntryDay?: number;
-  description?: string;
-  notes?: string;
-  tags?: string[];
-  mediaIds?: string[];
-  validated?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
+const JOURNAL_STORAGE_KEY = 'journalEntries';
+const VERSION_KEY = 'journalStorage_version';
+const SOURCE_STATE_KEY = 'contentStore_sources';
+const CURRENT_VERSION = '3.0';
+
+interface SourceState {
+  journal: Record<number, ContentSource>;
+  hasImported?: boolean;
 }
 
-export interface ContentStoreState {
-  version: string;
-  updatedAt: string;
-  journalEntries: JournalEntryContent[];
-  foodExperiences: FoodExperience[];
-  readingList: ReadingItem[];
-  mapLocations: MapLocationContent[];
-  mediaLibrary: MediaAsset[];
-}
+const defaultSourceState: SourceState = {
+  journal: {},
+  hasImported: false,
+};
 
-export interface JournalStats {
-  totalEntries: number;
-  minDay: number;
-  maxDay: number;
-  days: number[];
-  customDays: number[];
-  customCount: number;
-  storageVersion: string;
-  hasBackups: boolean;
-}
+const canonicalJournalEntries: JournalContentEntry[] = [
+  {
+    day: 1,
+    date: '15 janvier 2024',
+    title: 'Arrivée à Amman',
+    location: 'Amman, Jordanie',
+    story: [
+      "Après un vol nocturne bercé par la lumière des étoiles, je touche enfin le sol jordanien.",
+      "L'odeur de cardamome du café arabe embaume l'aérogare de Queen Alia tandis que je franchis les portes de l'immigration.",
+      "Un chauffeur souriant m'attend avec un panneau griffonné à la main : premier sourire, première conversation, première invitation à ralentir et à écouter.",
+    ].join('\n\n'),
+    mood: 'Excité',
+    photos: ['/lovable-uploads/ab7525ee-de5e-4ec5-bd8a-474c543dff10.png'],
+    link: 'https://maps.app.goo.gl/2CwZq8vSxcrb3MBv7',
+    source: 'canonical',
+  },
+  {
+    day: 2,
+    date: '16 janvier 2024',
+    title: 'Jerash et les collines du Nord',
+    location: 'Jerash, Ajloun, Amman',
+    story: [
+      "Au lever du soleil, la lumière découpe les colonnades de Jerash comme une scène de théâtre antique.",
+      "Les ruines racontent la grandeur de la Décapole pendant qu'à Ajloun, les pierres du château portent encore l'écho des croisades.",
+      "La journée s'achève à Amman autour d'un mansaf partagé avec la famille de mon hôte : un festin autant culturel que gastronomique.",
+    ].join('\n\n'),
+    mood: 'Émerveillé',
+    link: 'https://maps.app.goo.gl/g3PDc28B4wXCRB4x6',
+    source: 'canonical',
+  },
+];
 
-export interface ContentExportPayload {
-  version: string;
-  exportedAt: string;
-  data: ContentStoreState;
-}
+const canonicalPlaceReferences: PlaceReference[] = [
+  {
+    day: 1,
+    name: 'Amman',
+    summary: 'Capitale du royaume hachémite, point de départ et de retour du voyage.',
+    coordinates: [31.9539, 35.9106],
+    source: 'canonical',
+  },
+  {
+    day: 2,
+    name: 'Jerash',
+    summary: 'Cité gréco-romaine remarquablement conservée, joyau du nord jordanien.',
+    coordinates: [32.2811, 35.8998],
+    source: 'canonical',
+  },
+  {
+    day: 2,
+    name: 'Ajloun',
+    summary: 'Forteresse ayyoubide veillant sur les vallées verdoyantes et les oliveraies.',
+    coordinates: [32.3326, 35.7519],
+    source: 'canonical',
+  },
+];
 
-export interface ImportContentOptions {
-  merge?: boolean;
-}
+const canonicalFoodExperiences: FoodExperience[] = [
+  {
+    name: 'Mansaf',
+    type: 'Plat national',
+    description: "Le plat emblématique jordanien : agneau cuit dans une sauce au yaourt fermenté (jameed), servi sur un lit de riz et mangé traditionnellement avec les mains.",
+    experience: "Partagé lors d'un déjeuner familial à Amman. L'expérience était autant sociale que gustative - toute la famille mange dans le même plat, créant une intimité particulière.",
+    rating: 5,
+    location: 'Restaurant familial, Amman',
+    price: 'Modéré',
+    source: 'canonical',
+  },
+  {
+    name: 'Falafel et Houmous',
+    type: 'Street food',
+    description: "Boulettes de pois chiches frites servies avec houmous crémeux, tahini, et légumes frais dans du pain pita chaud.",
+    experience: "Découvert dans une petite échoppe près du théâtre romain. Le propriétaire m'a expliqué ses secrets : pois chiches trempés 24h et épices moulues chaque matin.",
+    rating: 4,
+    location: 'Downtown Amman',
+    price: 'Très abordable',
+    source: 'canonical',
+  },
+  {
+    name: 'Knafeh',
+    type: 'Dessert',
+    description: "Dessert traditionnel au fromage fondu recouvert de cheveux d'ange (kataifi) et arrosé de sirop parfumé à l'eau de rose.",
+    experience: "Une révélation ! La version de Nablus dégustée à Amman était parfaite : croquant du dessus, fondant à l'intérieur. Un équilibre sucré-salé surprenant.",
+    rating: 5,
+    location: 'Pâtisserie Al-Aker, Amman',
+    price: 'Abordable',
+    source: 'canonical',
+  },
+  {
+    name: 'Thé à la menthe et café arabe',
+    type: 'Boissons',
+    description: "Thé noir parfumé à la menthe fraîche et café arabe (qahwa) parfumé à la cardamome, servis dans de petits verres.",
+    experience: "Rituel quotidien dans chaque lieu visité. Le thé accompagne chaque conversation, chaque pause. Le café arabe, plus corsé, ponctue les moments importants.",
+    rating: 4,
+    location: 'Partout',
+    price: 'Très abordable',
+    source: 'canonical',
+  },
+];
 
-const createEmptyState = (): ContentStoreState => ({
-  version: CONTENT_STORE_VERSION,
-  updatedAt: nowIso(),
-  journalEntries: [],
-  foodExperiences: [],
-  readingList: [],
-  mapLocations: [],
-  mediaLibrary: []
-});
+const canonicalReadingRecommendations: ReadingRecommendation[] = [
+  {
+    title: "Lawrence d'Arabie",
+    author: 'T.E. Lawrence',
+    type: 'Autobiographie',
+    description: "Le récit captivant de l'officier britannique qui a vécu la révolte arabe de 1916-1918. Une plongée dans l'histoire du Moyen-Orient moderne.",
+    why: "Indispensable pour comprendre l'histoire moderne de la région et l'émergence de la Jordanie moderne sous l'émir Abdullah.",
+    amazon: 'https://amazon.fr/...',
+    rating: 5,
+    source: 'canonical',
+  },
+  {
+    title: 'Pétra : Merveille du monde',
+    author: 'Jane Taylor',
+    type: 'Guide culturel',
+    description: "Guide complet sur l'histoire, l'archéologie et l'art nabatéen de Pétra. Avec de magnifiques photographies et plans détaillés.",
+    why: "Le guide de référence pour comprendre l'ingéniosité nabatéenne et l'importance historique du site.",
+    amazon: 'https://amazon.fr/...',
+    rating: 4,
+    source: 'canonical',
+  },
+  {
+    title: 'Les Bédouins de Jordanie',
+    author: 'Shelagh Weir',
+    type: 'Anthropologie',
+    description: "Étude approfondie de la culture bédouine traditionnelle, ses traditions, son artisanat et son mode de vie.",
+    why: "Pour découvrir l'âme nomade de la Jordanie et comprendre l'hospitalité légendaire de ses habitants.",
+    amazon: 'https://amazon.fr/...',
+    rating: 4,
+    source: 'canonical',
+  },
+  {
+    title: 'Cuisine du Moyen-Orient',
+    author: 'Claudia Roden',
+    type: 'Gastronomie',
+    description: "Bible de la cuisine moyen-orientale avec des recettes authentiques jordaniennes, palestiniennes et syriennes.",
+    why: "Pour reproduire chez soi les saveurs découvertes et prolonger le voyage culinaire.",
+    amazon: 'https://amazon.fr/...',
+    rating: 5,
+    source: 'canonical',
+  },
+  {
+    title: 'Jordan: A Timeless Land',
+    author: 'Mohamed El-Khoury',
+    type: 'Beau livre',
+    description: "Superbe livre photographique qui capture la beauté des paysages jordaniens, de Pétra au Wadi Rum.",
+    why: "Pour revivre visuellement la magie des paysages jordaniens et partager la beauté du pays.",
+    amazon: 'https://amazon.fr/...',
+    rating: 4,
+    source: 'canonical',
+  },
+  {
+    title: 'Le Royaume hachémite de Jordanie',
+    author: 'Philippe Droz-Vincent',
+    type: 'Géopolitique',
+    description: 'Analyse politique et sociale de la Jordanie contemporaine, son rôle régional et ses défis.',
+    why: 'Pour comprendre les enjeux actuels du royaume et son importance stratégique au Moyen-Orient.',
+    amazon: 'https://amazon.fr/...',
+    rating: 4,
+    source: 'canonical',
+  },
+];
 
-let memoryState: ContentStoreState = createEmptyState();
+const stripSource = (entry: JournalContentEntry): JournalEntry => {
+  const { source: _source, ...rest } = entry;
+  return rest;
+};
 
-const listeners = new Set<(state: ContentStoreState) => void>();
-
-const notify = (state: ContentStoreState) => {
-  listeners.forEach(listener => {
-    try {
-      listener(state);
-    } catch (error) {
-      console.error('ContentStore listener error', error);
+const loadSourceState = (): SourceState => {
+  try {
+    const raw = localStorage.getItem(SOURCE_STATE_KEY);
+    if (!raw) {
+      return { ...defaultSourceState };
     }
+
+    const parsed = JSON.parse(raw);
+    return {
+      journal: parsed.journal ?? {},
+      hasImported: parsed.hasImported ?? false,
+    } as SourceState;
+  } catch (error) {
+    console.warn('⚠️ Impossible de charger l\'état des sources:', error);
+    return { ...defaultSourceState };
+  }
+};
+
+const saveSourceState = (state: SourceState) => {
+  localStorage.setItem(SOURCE_STATE_KEY, JSON.stringify(state));
+};
+
+const matchCanonicalEntry = (entry: JournalEntry): JournalContentEntry | undefined => {
+  return canonicalJournalEntries.find((canonical) => {
+    return (
+      canonical.day === entry.day &&
+      canonical.title === entry.title &&
+      canonical.location === entry.location &&
+      canonical.story === entry.story
+    );
   });
 };
 
-const normalizeMediaAsset = (asset: Partial<MediaAsset>): MediaAsset => {
-  const createdAt = asset.createdAt || nowIso();
-  return {
-    id: asset.id || generateId(),
-    type: asset.type === 'video' || asset.type === 'audio' || asset.type === 'document' ? asset.type : 'image',
-    title: asset.title || 'Untitled asset',
-    url: asset.url || '',
-    description: asset.description,
-    tags: isStringArray(asset.tags) ? asset.tags : [],
-    relatedDay: typeof asset.relatedDay === 'number' ? asset.relatedDay : undefined,
-    capturedAt: asset.capturedAt,
-    location: asset.location,
-    createdAt,
-    updatedAt: asset.updatedAt || createdAt,
-    metadata: typeof asset.metadata === 'object' && asset.metadata !== null ? asset.metadata as Record<string, unknown> : undefined,
-  };
-};
-
-const normalizeJournalEntry = async (
-  entry: Partial<JournalEntryContent>,
-  existing?: JournalEntryContent
-): Promise<JournalEntryContent> => {
-  const createdAt = existing?.createdAt || entry.createdAt || nowIso();
-  const basePhotos = Array.isArray(entry.photos)
-    ? entry.photos.filter(photo => typeof photo === 'string')
-    : existing?.photos || [];
-
-  const processedPhotos = await Promise.all(
-    basePhotos.map(async photo => {
-      if (typeof photo !== 'string') return null;
-      if (!photo.startsWith('blob:') && !photo.startsWith('data:')) return photo;
-
-      try {
-        return await compressImageUrl(photo, {
-          maxWidth: 800,
-          maxHeight: 600,
-          quality: 0.7,
-          format: 'jpeg'
-        });
-      } catch (error) {
-        console.warn('Failed to compress photo, keeping original', error);
-        return photo;
-      }
-    })
-  );
-
-  const validPhotos = processedPhotos.filter((photo): photo is string => typeof photo === 'string');
-
-  return {
-    day: typeof entry.day === 'number' ? entry.day : existing?.day || 0,
-    date: entry.date || existing?.date || '',
-    title: entry.title || existing?.title || '',
-    location: entry.location || existing?.location || '',
-    story: entry.story || existing?.story || '',
-    mood: entry.mood || existing?.mood || '',
-    photos: validPhotos,
-    link: entry.link || existing?.link,
-    mediaIds: isStringArray(entry.mediaIds) ? entry.mediaIds : existing?.mediaIds,
-    mapLocationIds: isStringArray(entry.mapLocationIds) ? entry.mapLocationIds : existing?.mapLocationIds,
-    isCustom: typeof entry.isCustom === 'boolean' ? entry.isCustom : existing?.isCustom ?? true,
-    createdAt,
-    updatedAt: nowIso(),
-  };
-};
-
-const normalizeFoodExperience = (experience: Partial<FoodExperience>): FoodExperience => {
-  const createdAt = experience.createdAt || nowIso();
-  return {
-    id: experience.id || generateId(),
-    name: experience.name || 'Expérience gastronomique',
-    description: experience.description || '',
-    experience: experience.experience,
-    rating: typeof experience.rating === 'number' ? experience.rating : undefined,
-    location: experience.location,
-    price: experience.price,
-    date: experience.date,
-    relatedDay: typeof experience.relatedDay === 'number' ? experience.relatedDay : undefined,
-    tags: isStringArray(experience.tags) ? experience.tags : [],
-    mediaIds: isStringArray(experience.mediaIds) ? experience.mediaIds : [],
-    notes: experience.notes,
-    createdAt,
-    updatedAt: experience.updatedAt || createdAt,
-  };
-};
-
-const normalizeReadingItem = (item: Partial<ReadingItem>): ReadingItem => {
-  const createdAt = item.createdAt || nowIso();
-  return {
-    id: item.id || generateId(),
-    title: item.title || 'Ressource de lecture',
-    author: item.author,
-    type: item.type,
-    description: item.description,
-    reason: item.reason,
-    link: item.link,
-    rating: typeof item.rating === 'number' ? item.rating : undefined,
-    tags: isStringArray(item.tags) ? item.tags : [],
-    relatedDay: typeof item.relatedDay === 'number' ? item.relatedDay : undefined,
-    mediaIds: isStringArray(item.mediaIds) ? item.mediaIds : [],
-    createdAt,
-    updatedAt: item.updatedAt || createdAt,
-  };
-};
-
-const normalizeMapLocation = (location: Partial<MapLocationContent>): MapLocationContent => {
-  const createdAt = location.createdAt || nowIso();
-  const coordinates = Array.isArray(location.coordinates) && location.coordinates.length === 2
-    ? [Number(location.coordinates[0]), Number(location.coordinates[1])]
-    : [0, 0];
-
-  return {
-    id: location.id || generateId(),
-    name: location.name || 'Lieu cartographique',
-    coordinates: [coordinates[0], coordinates[1]],
-    day: typeof location.day === 'number' ? location.day : undefined,
-    relatedEntryDay: typeof location.relatedEntryDay === 'number' ? location.relatedEntryDay : undefined,
-    description: location.description,
-    notes: location.notes,
-    tags: isStringArray(location.tags) ? location.tags : [],
-    mediaIds: isStringArray(location.mediaIds) ? location.mediaIds : [],
-    validated: typeof location.validated === 'boolean' ? location.validated : undefined,
-    createdAt,
-    updatedAt: location.updatedAt || createdAt,
-  };
-};
-
-const sanitizeState = (partial?: Partial<ContentStoreState>): ContentStoreState => {
-  const state = partial || {};
-  return {
-    version: CONTENT_STORE_VERSION,
-    updatedAt: typeof state.updatedAt === 'string' ? state.updatedAt : nowIso(),
-    journalEntries: Array.isArray(state.journalEntries) ? state.journalEntries.map(entry => ({ ...entry })) : [],
-    foodExperiences: Array.isArray(state.foodExperiences) ? state.foodExperiences.map(experience => ({ ...experience })) : [],
-    readingList: Array.isArray(state.readingList) ? state.readingList.map(item => ({ ...item })) : [],
-    mapLocations: Array.isArray(state.mapLocations) ? state.mapLocations.map(location => ({ ...location })) : [],
-    mediaLibrary: Array.isArray(state.mediaLibrary) ? state.mediaLibrary.map(asset => ({ ...asset })) : [],
-  };
-};
-
-const readState = (): ContentStoreState => {
-  if (!isBrowser) {
-    return memoryState;
-  }
-
-  const raw = window.localStorage.getItem(STORAGE_KEY);
-  if (!raw) {
-    memoryState = createEmptyState();
-    return memoryState;
-  }
-
+export const initializeContentStore = () => {
   try {
-    const parsed = JSON.parse(raw) as Partial<ContentStoreState>;
-    const sanitized = sanitizeState(parsed);
-    const migrated = runMigrations(sanitized);
-    memoryState = migrated;
-    return migrated;
-  } catch (error) {
-    console.error('Failed to parse stored content state', error);
-    memoryState = createEmptyState();
-    return memoryState;
-  }
-};
-
-const writeState = (state: ContentStoreState): ContentStoreState => {
-  const nextState: ContentStoreState = {
-    ...state,
-    version: CONTENT_STORE_VERSION,
-    updatedAt: nowIso(),
-  };
-
-  if (isBrowser) {
-    const serialized = JSON.stringify(nextState);
-    const existing = window.localStorage.getItem(STORAGE_KEY);
-    if (existing && existing !== serialized) {
-      const backup1 = window.localStorage.getItem(BACKUP_KEY);
-      if (backup1) {
-        window.localStorage.setItem(BACKUP_2_KEY, backup1);
-      }
-      window.localStorage.setItem(BACKUP_KEY, existing);
+    const existing = localStorage.getItem(JOURNAL_STORAGE_KEY);
+    if (!existing || existing === '[]') {
+      const entriesToSave = canonicalJournalEntries.map(stripSource);
+      localStorage.setItem(JOURNAL_STORAGE_KEY, JSON.stringify(entriesToSave));
+      localStorage.setItem(VERSION_KEY, CURRENT_VERSION);
+      saveSourceState({
+        journal: canonicalJournalEntries.reduce<Record<number, ContentSource>>((map, entry) => {
+          map[entry.day] = 'canonical';
+          return map;
+        }, {}),
+        hasImported: false,
+      });
+      return;
     }
-    window.localStorage.setItem(STORAGE_KEY, serialized);
-    window.localStorage.setItem(VERSION_KEY, CONTENT_STORE_VERSION);
-  }
 
-  memoryState = nextState;
-  notify(nextState);
-  return nextState;
-};
+    const parsed: JournalEntry[] = JSON.parse(existing);
+    syncJournalSources(parsed);
 
-const setState = (updater: (state: ContentStoreState) => ContentStoreState): ContentStoreState => {
-  const current = readState();
-  const updated = updater(current);
-  const sanitized = sanitizeState(updated);
-  return writeState(sanitized);
-};
-
-const runMigrations = (state: ContentStoreState): ContentStoreState => {
-  if (!isBrowser) {
-    return state;
-  }
-
-  const version = window.localStorage.getItem(VERSION_KEY);
-  if (version === CONTENT_STORE_VERSION) {
-    return state;
-  }
-
-  let nextState = { ...state };
-
-  try {
-    const legacyRaw = window.localStorage.getItem(LEGACY_JOURNAL_KEY);
-    if (legacyRaw) {
-      const legacyEntries = JSON.parse(legacyRaw);
-      if (Array.isArray(legacyEntries)) {
-        const validEntries = legacyEntries.filter(entry => entry && typeof entry.day === 'number');
-        nextState.journalEntries = validEntries.map(entry => ({
-          day: entry.day,
-          date: entry.date || '',
-          title: entry.title || '',
-          location: entry.location || '',
-          story: entry.story || '',
-          mood: entry.mood || '',
-          photos: Array.isArray(entry.photos) ? entry.photos.filter((photo: unknown) => typeof photo === 'string') : [],
-          link: typeof entry.link === 'string' ? entry.link : undefined,
-          isCustom: true,
-          createdAt: nowIso(),
-          updatedAt: nowIso(),
-        }));
-      }
+    if (!localStorage.getItem(VERSION_KEY)) {
+      localStorage.setItem(VERSION_KEY, CURRENT_VERSION);
     }
   } catch (error) {
-    console.warn('Failed to migrate legacy journal entries', error);
+    console.error('❌ Erreur lors de l\'initialisation du contentStore:', error);
+  }
+};
+
+export const syncJournalSources = (entries: JournalEntry[]): JournalContentEntry[] => {
+  const state = loadSourceState();
+  let stateChanged = false;
+
+  const entryDays = new Set(entries.map((entry) => entry.day));
+  const syncedEntries = entries.map((entry) => {
+    const canonicalMatch = matchCanonicalEntry(entry);
+    const source: ContentSource = canonicalMatch ? 'canonical' : 'custom';
+
+    if (state.journal[entry.day] !== source) {
+      state.journal[entry.day] = source;
+      stateChanged = true;
+    }
+
+    return {
+      ...entry,
+      source,
+    };
+  });
+
+  Object.keys(state.journal).forEach((key) => {
+    const day = Number(key);
+    if (!entryDays.has(day)) {
+      delete state.journal[day];
+      stateChanged = true;
+    }
+  });
+
+  if (stateChanged) {
+    saveSourceState(state);
   }
 
-  const serialized = JSON.stringify(nextState);
-  window.localStorage.setItem(STORAGE_KEY, serialized);
-  window.localStorage.setItem(VERSION_KEY, CONTENT_STORE_VERSION);
-  memoryState = nextState;
-  return nextState;
+  return syncedEntries;
 };
 
-export const subscribeToContentStore = (listener: (state: ContentStoreState) => void) => {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
+export const getJournalEntriesWithSource = (entries: JournalEntry[]): JournalContentEntry[] => {
+  return syncJournalSources(entries);
 };
 
-export const getContentState = (): ContentStoreState => readState();
-
-export const getJournalEntries = (): JournalEntryContent[] => {
-  const state = readState();
-  return [...state.journalEntries].sort((a, b) => a.day - b.day);
+export const isCustomJournalDay = (day: number): boolean => {
+  const state = loadSourceState();
+  return state.journal[day] === 'custom';
 };
 
-export const getJournalEntry = (day: number): JournalEntryContent | undefined => {
-  return getJournalEntries().find(entry => entry.day === day);
+export const markJournalDayAsCustom = (day: number) => {
+  const state = loadSourceState();
+  if (state.journal[day] !== 'custom') {
+    state.journal[day] = 'custom';
+    saveSourceState(state);
+  }
 };
 
-export const saveJournalEntry = async (entry: JournalEntryContent): Promise<JournalEntryContent> => {
-  const currentState = readState();
-  const existing = currentState.journalEntries.find(item => item.day === entry.day);
-  const normalized = await normalizeJournalEntry(entry, existing);
-
-  const nextState: ContentStoreState = {
-    ...currentState,
-    journalEntries: [...currentState.journalEntries.filter(item => item.day !== entry.day), normalized]
-      .sort((a, b) => a.day - b.day)
-  };
-
-  writeState(nextState);
-  return normalized;
+export const registerImportedJournalEntries = (entries: JournalEntry[]) => {
+  const state = loadSourceState();
+  entries.forEach((entry) => {
+    state.journal[entry.day] = 'custom';
+  });
+  state.hasImported = true;
+  saveSourceState(state);
 };
 
-export const removeJournalEntry = (day: number): void => {
-  setState(state => ({
-    ...state,
-    journalEntries: state.journalEntries.filter(entry => entry.day !== day)
-  }));
+export const clearContentStoreState = () => {
+  localStorage.removeItem(SOURCE_STATE_KEY);
 };
 
-export const replaceJournalEntries = async (entries: JournalEntryContent[]): Promise<JournalEntryContent[]> => {
-  const normalizedEntries = await Promise.all(entries.map(entry => normalizeJournalEntry(entry)));
-  const currentState = readState();
-  const nextState: ContentStoreState = {
-    ...currentState,
-    journalEntries: [...normalizedEntries].sort((a, b) => a.day - b.day)
-  };
-
-  writeState(nextState);
-  return nextState.journalEntries;
+export const getCanonicalJournalEntries = (): JournalContentEntry[] => {
+  return [...canonicalJournalEntries];
 };
 
-export const getJournalStats = (): JournalStats => {
-  const entries = getJournalEntries();
-  const days = entries.map(entry => entry.day).sort((a, b) => a - b);
-  return {
-    totalEntries: entries.length,
-    minDay: days[0] ?? 0,
-    maxDay: days[days.length - 1] ?? 0,
-    days,
-    customDays: entries.filter(entry => entry.isCustom).map(entry => entry.day),
-    customCount: entries.filter(entry => entry.isCustom).length,
-    storageVersion: isBrowser ? window.localStorage.getItem(VERSION_KEY) || CONTENT_STORE_VERSION : CONTENT_STORE_VERSION,
-    hasBackups: isBrowser ? Boolean(window.localStorage.getItem(BACKUP_KEY) || window.localStorage.getItem(BACKUP_2_KEY)) : false,
-  };
+export const getPlaceReferences = (): PlaceReference[] => {
+  return [...canonicalPlaceReferences];
 };
 
 export const getFoodExperiences = (): FoodExperience[] => {
-  const state = readState();
-  return [...state.foodExperiences];
+  return [...canonicalFoodExperiences];
 };
 
-export const saveFoodExperience = (experience: Partial<FoodExperience>): FoodExperience => {
-  let saved = normalizeFoodExperience(experience);
-  setState(state => {
-    const others = state.foodExperiences.filter(item => item.id !== saved.id);
-    saved = normalizeFoodExperience({ ...experience, id: saved.id, createdAt: saved.createdAt });
-    return {
-      ...state,
-      foodExperiences: [...others, saved]
-    };
-  });
-  return saved;
-};
-
-export const removeFoodExperience = (id: string): void => {
-  setState(state => ({
-    ...state,
-    foodExperiences: state.foodExperiences.filter(item => item.id !== id)
-  }));
-};
-
-export const getReadingItems = (): ReadingItem[] => {
-  const state = readState();
-  return [...state.readingList];
-};
-
-export const saveReadingItem = (item: Partial<ReadingItem>): ReadingItem => {
-  let saved = normalizeReadingItem(item);
-  setState(state => {
-    const others = state.readingList.filter(current => current.id !== saved.id);
-    saved = normalizeReadingItem({ ...item, id: saved.id, createdAt: saved.createdAt });
-    return {
-      ...state,
-      readingList: [...others, saved]
-    };
-  });
-  return saved;
-};
-
-export const removeReadingItem = (id: string): void => {
-  setState(state => ({
-    ...state,
-    readingList: state.readingList.filter(item => item.id !== id)
-  }));
-};
-
-export const getMapLocations = (): MapLocationContent[] => {
-  const state = readState();
-  return [...state.mapLocations];
-};
-
-export const saveMapLocation = (location: Partial<MapLocationContent>): MapLocationContent => {
-  let saved = normalizeMapLocation(location);
-  setState(state => {
-    const others = state.mapLocations.filter(current => current.id !== saved.id);
-    saved = normalizeMapLocation({ ...location, id: saved.id, createdAt: saved.createdAt });
-    return {
-      ...state,
-      mapLocations: [...others, saved]
-    };
-  });
-  return saved;
-};
-
-export const removeMapLocation = (id: string): void => {
-  setState(state => ({
-    ...state,
-    mapLocations: state.mapLocations.filter(location => location.id !== id)
-  }));
-};
-
-export const getMediaAssets = (): MediaAsset[] => {
-  const state = readState();
-  return [...state.mediaLibrary];
-};
-
-export const saveMediaAsset = (asset: Partial<MediaAsset>): MediaAsset => {
-  let saved = normalizeMediaAsset(asset);
-  setState(state => {
-    const others = state.mediaLibrary.filter(current => current.id !== saved.id);
-    saved = normalizeMediaAsset({ ...asset, id: saved.id, createdAt: saved.createdAt });
-    return {
-      ...state,
-      mediaLibrary: [...others, saved]
-    };
-  });
-  return saved;
-};
-
-export const removeMediaAsset = (id: string): void => {
-  setState(state => ({
-    ...state,
-    mediaLibrary: state.mediaLibrary.filter(asset => asset.id !== id)
-  }));
-};
-
-const mergeById = <T extends { id: string }>(current: T[], incoming: T[]): T[] => {
-  const map = new Map<string, T>();
-  current.forEach(item => map.set(item.id, item));
-  incoming.forEach(item => map.set(item.id, item));
-  return Array.from(map.values());
-};
-
-const mergeJournalEntries = (current: JournalEntryContent[], incoming: JournalEntryContent[]): JournalEntryContent[] => {
-  const map = new Map<number, JournalEntryContent>();
-  current.forEach(entry => map.set(entry.day, entry));
-  incoming.forEach(entry => map.set(entry.day, entry));
-  return Array.from(map.values()).sort((a, b) => a.day - b.day);
-};
-
-export const exportContent = (): ContentExportPayload => ({
-  version: CONTENT_STORE_VERSION,
-  exportedAt: nowIso(),
-  data: readState()
-});
-
-export const importContent = async (
-  payload: string | ContentExportPayload | Partial<ContentStoreState>,
-  options: ImportContentOptions = {}
-): Promise<ContentStoreState> => {
-  const raw = typeof payload === 'string' ? JSON.parse(payload) : payload;
-  const data: Partial<ContentStoreState> =
-    raw && typeof raw === 'object' && 'data' in raw
-      ? (raw as ContentExportPayload).data
-      : raw as Partial<ContentStoreState>;
-
-  const sanitized = sanitizeState(data);
-  const normalizedEntries: JournalEntryContent[] = [];
-
-  for (const entry of sanitized.journalEntries) {
-    const normalized = await normalizeJournalEntry(entry);
-    normalizedEntries.push(normalized);
-  }
-
-  const nextState = options.merge
-    ? setState(state => ({
-        ...state,
-        journalEntries: mergeJournalEntries(state.journalEntries, normalizedEntries),
-        foodExperiences: mergeById(state.foodExperiences, sanitized.foodExperiences.map(normalizeFoodExperience)),
-        readingList: mergeById(state.readingList, sanitized.readingList.map(normalizeReadingItem)),
-        mapLocations: mergeById(state.mapLocations, sanitized.mapLocations.map(normalizeMapLocation)),
-        mediaLibrary: mergeById(state.mediaLibrary, sanitized.mediaLibrary.map(normalizeMediaAsset)),
-      }))
-    : setState(() => ({
-        version: CONTENT_STORE_VERSION,
-        updatedAt: nowIso(),
-        journalEntries: normalizedEntries,
-        foodExperiences: sanitized.foodExperiences.map(normalizeFoodExperience),
-        readingList: sanitized.readingList.map(normalizeReadingItem),
-        mapLocations: sanitized.mapLocations.map(normalizeMapLocation),
-        mediaLibrary: sanitized.mediaLibrary.map(normalizeMediaAsset),
-      }));
-
-  return nextState;
-};
-
-export const inspectContentStorage = () => {
-  if (!isBrowser) {
-    return {
-      main: JSON.stringify(memoryState),
-      backup1: null,
-      backup2: null,
-      version: CONTENT_STORE_VERSION,
-      sizes: {
-        main: JSON.stringify(memoryState).length,
-        backup1: 0,
-        backup2: 0,
-      }
-    };
-  }
-
-  const main = window.localStorage.getItem(STORAGE_KEY);
-  const backup1 = window.localStorage.getItem(BACKUP_KEY);
-  const backup2 = window.localStorage.getItem(BACKUP_2_KEY);
-  const version = window.localStorage.getItem(VERSION_KEY) || CONTENT_STORE_VERSION;
-
-  return {
-    main,
-    backup1,
-    backup2,
-    version,
-    sizes: {
-      main: main?.length || 0,
-      backup1: backup1?.length || 0,
-      backup2: backup2?.length || 0,
-    }
-  };
-};
-
-export const resetContentStore = (): ContentStoreState => {
-  if (isBrowser) {
-    window.localStorage.removeItem(STORAGE_KEY);
-    window.localStorage.removeItem(BACKUP_KEY);
-    window.localStorage.removeItem(BACKUP_2_KEY);
-    window.localStorage.removeItem(VERSION_KEY);
-  }
-  memoryState = createEmptyState();
-  notify(memoryState);
-  return memoryState;
-};
-
-export const recoverContentFromBackup = (): ContentStoreState => {
-  if (!isBrowser) {
-    return memoryState;
-  }
-
-  const backups = [BACKUP_KEY, BACKUP_2_KEY];
-  for (const key of backups) {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) continue;
-    try {
-      const parsed = JSON.parse(raw) as Partial<ContentStoreState>;
-      const sanitized = sanitizeState(parsed);
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
-      window.localStorage.setItem(VERSION_KEY, CONTENT_STORE_VERSION);
-      memoryState = sanitized;
-      notify(memoryState);
-      return memoryState;
-    } catch (error) {
-      console.warn(`Failed to recover from backup ${key}`, error);
-    }
-  }
-
-  return memoryState;
-};
-
-export const forceContentMigration = (): ContentStoreState => {
-  if (isBrowser) {
-    window.localStorage.removeItem(VERSION_KEY);
-  }
-  const state = readState();
-  notify(state);
-  return state;
+export const getReadingRecommendations = (): ReadingRecommendation[] => {
+  return [...canonicalReadingRecommendations];
 };
