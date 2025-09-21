@@ -1,39 +1,44 @@
-name: Fix lockfile
-
+name: Lockfile Fix
 on:
   workflow_dispatch:
+    inputs:
+      target_branch:
+        description: 'Branch to fix'
+        required: true
+        default: ${{ github.ref_name }}
+
+permissions:
+  contents: write
+  pull-requests: write
 
 jobs:
-  update-lockfile:
+  fix-lock:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout target branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.target_branch }}
 
-      - uses: actions/setup-node@v4
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
 
-      - name: Refresh lockfile
+      - name: Regenerate lockfile (no install of modules)
         run: |
-          npm config set registry https://registry.npmjs.org/
-          npm install --package-lock-only --no-audit --no-fund
-          npm dedupe || true
+          rm -f package-lock.json
+          npm install --package-lock-only
 
-      - name: Create pull request
-        uses: peter-evans/create-pull-request@v6
-        with:
-          commit-message: chore: update package-lock.json
-          title: chore: update package-lock.json
-          body: |
-            ## Summary
-            - refresh package-lock.json using npm install --package-lock-only
-            - dedupe dependencies to keep the tree consistent
-
-            ## Testing
-            - not run (automation only)
-          branch: chore/update-lockfile
-          delete-branch: true
-          base: main
-          add-paths: |
-            package-lock.json
+      - name: Commit updated lockfile
+        run: |
+          if ! git diff --quiet -- package-lock.json; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add package-lock.json
+            git commit -m "chore(lockfile): sync package-lock with package.json"
+            git push
+          else
+            echo "Lockfile already up to date."
+          fi
