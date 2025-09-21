@@ -92,6 +92,7 @@ describe('Map Integration Tests', () => {
     mockUseJournalEntries.mockReturnValue({
       allEntries: mockEntries,
       customEntries: mockEntries,
+      isCustom: vi.fn().mockReturnValue(false),
       isLoading: false,
       error: null,
       addEntry: vi.fn(),

@@ -1,14 +1,25 @@
+<<<<<<< HEAD
 name: Lockfile Auto-Fix
 on:
   pull_request:
     types: [opened, synchronize, reopened]
     branches: [ main ]
+=======
+name: Lockfile Fix
+on:
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: 'Branch to fix (ex: feature/my-branch)'
+        required: true
+>>>>>>> origin/main
 
 permissions:
   contents: write
   pull-requests: write
 
 jobs:
+<<<<<<< HEAD
   fix:
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
@@ -22,11 +33,23 @@ jobs:
       # 2) Si .nvmrc existe → on l'utilise
       - name: Setup Node from .nvmrc
         if: hashFiles('.nvmrc') != ''
+=======
+  fix-lock:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.target_branch }}
+
+      - name: Use Node.js from .nvmrc
+>>>>>>> origin/main
         uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
 
+<<<<<<< HEAD
       # 3) Sinon → fallback Node 20
       - name: Setup Node 20 (fallback)
         if: hashFiles('.nvmrc') == ''
@@ -46,19 +69,29 @@ jobs:
           npm -v
 
       # 5) Régénérer le lockfile sans installer les modules
+=======
+>>>>>>> origin/main
       - name: Regenerate lockfile (no full install)
         run: |
           rm -f package-lock.json
           npm install --package-lock-only
 
+<<<<<<< HEAD
       # 6) Commit si le lock a changé
       - name: Commit lockfile if changed
+=======
+      - name: Commit updated lockfile if changed
+>>>>>>> origin/main
         run: |
           if ! git diff --quiet -- package-lock.json; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add package-lock.json
+<<<<<<< HEAD
             git commit -m "chore(lockfile): sync package-lock.json"
+=======
+            git commit -m "chore(lockfile): sync package-lock with package.json"
+>>>>>>> origin/main
             git push
           else
             echo "Lockfile already up to date."

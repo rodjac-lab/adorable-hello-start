@@ -95,17 +95,26 @@ describe('Map Component', () => {
     }
   ];
 
+  const createHookValue = (overrides: Partial<Record<string, any>> = {}) => ({
+    allEntries: mockJournalEntries,
+    customEntries: mockJournalEntries,
+    isCustom: vi.fn().mockReturnValue(false),
+    isLoading: false,
+    error: null,
+    addEntry: vi.fn(),
+    editEntry: vi.fn(),
+    getStats: vi.fn(),
+    reloadEntries: vi.fn(),
+    ...overrides,
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   describe('SPÉCIFICATION: Interface initiale sans token', () => {
     it('devrait afficher le formulaire de configuration Mapbox quand aucun token n\'est fourni', () => {
-      mockUseJournalEntries.mockReturnValue({
-        allEntries: mockJournalEntries,
-        isLoading: false,
-        error: null
-      });
+      mockUseJournalEntries.mockReturnValue(createHookValue());
 
       render(<Map />);
 
@@ -116,11 +125,10 @@ describe('Map Component', () => {
     });
 
     it('devrait désactiver le bouton si aucune entrée de journal n\'existe', () => {
-      mockUseJournalEntries.mockReturnValue({
+      mockUseJournalEntries.mockReturnValue(createHookValue({
         allEntries: [],
-        isLoading: false,
-        error: null
-      });
+        customEntries: [],
+      }));
 
       render(<Map />);
 
@@ -132,11 +140,7 @@ describe('Map Component', () => {
 
   describe('SPÉCIFICATION: Géocodage automatique des entrées du journal', () => {
     it('devrait analyser automatiquement les lieux du journal quand un token valide est fourni', async () => {
-      mockUseJournalEntries.mockReturnValue({
-        allEntries: mockJournalEntries,
-        isLoading: false,
-        error: null
-      });
+      mockUseJournalEntries.mockReturnValue(createHookValue());
 
       mockGeocodeJournalEntries.mockResolvedValue(expectedGeocodeResults);
 
@@ -166,11 +170,7 @@ describe('Map Component', () => {
     });
 
     it('devrait afficher les lieux détectés dans le modal de validation', async () => {
-      mockUseJournalEntries.mockReturnValue({
-        allEntries: mockJournalEntries,
-        isLoading: false,
-        error: null
-      });
+      mockUseJournalEntries.mockReturnValue(createHookValue());
 
       mockGeocodeJournalEntries.mockResolvedValue(expectedGeocodeResults);
 
@@ -191,11 +191,7 @@ describe('Map Component', () => {
     });
 
     it('devrait gérer les erreurs de géocodage avec un message d\'erreur explicite', async () => {
-      mockUseJournalEntries.mockReturnValue({
-        allEntries: mockJournalEntries,
-        isLoading: false,
-        error: null
-      });
+      mockUseJournalEntries.mockReturnValue(createHookValue());
 
       const mockAlert = vi.spyOn(window, 'alert').mockImplementation(() => {});
       mockGeocodeJournalEntries.mockRejectedValue(new Error('Token invalide'));
@@ -216,11 +212,7 @@ describe('Map Component', () => {
     });
 
     it('devrait afficher un avertissement si aucun lieu n\'est géocodé avec succès', async () => {
-      mockUseJournalEntries.mockReturnValue({
-        allEntries: mockJournalEntries,
-        isLoading: false,
-        error: null
-      });
+      mockUseJournalEntries.mockReturnValue(createHookValue());
 
       const mockAlert = vi.spyOn(window, 'alert').mockImplementation(() => {});
       mockGeocodeJournalEntries.mockResolvedValue([]);
