@@ -2,7 +2,6 @@ import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookOpen, Utensils, Camera, Book, Plane, MapPin } from "lucide-react";
-import { OptimizedImage } from "@/components/OptimizedImage";
 import heroImage from "@/assets/petra-hero.jpg";
 
 const navigationCards = [
@@ -10,28 +9,28 @@ const navigationCards = [
     title: "Journal quotidien",
     description: "Suivez jour par jour mes aventures, découvertes et impressions",
     icon: BookOpen,
-    href: "/journal",
+    href: "#/journal",
     gradient: "from-primary/20 to-accent/20",
   },
   {
     title: "Gastronomie",
     description: "Un voyage culinaire à travers les saveurs jordaniennes",
     icon: Utensils,
-    href: "/food",
+    href: "#/food",
     gradient: "from-orange-500/20 to-red-500/20",
   },
   {
     title: "Galerie & Carte",
     description: "Les plus beaux moments et l'itinéraire interactif",
     icon: Camera,
-    href: "/gallery",
+    href: "#/gallery",
     gradient: "from-blue-500/20 to-purple-500/20",
   },
   {
     title: "Lectures",
     description: "Mes recommandations pour approfondir la découverte",
     icon: Book,
-    href: "/recommendations",
+    href: "#/recommendations",
     gradient: "from-green-500/20 to-emerald-500/20",
   },
 ];
@@ -43,12 +42,9 @@ const Index = () => {
       
       {/* Hero Section */}
       <div className="relative h-screen flex items-center justify-center overflow-hidden">
-        <OptimizedImage
-          src={heroImage}
-          alt="Vue majestueuse de Petra en Jordanie"
-          className="absolute inset-0"
-          priority={true}
-          sizes="100vw"
+        <div
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: `url(${heroImage})` }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10"></div>
         
@@ -72,7 +68,7 @@ const Index = () => {
               size="lg"
               className="bg-white text-primary hover:bg-white/90 font-inter font-semibold px-8 py-4 rounded-full text-lg shadow-elegant"
             >
-              <a href="/studio">🚑 Ouvrir le studio</a>
+              <a href="#/studio">🚑 Ouvrir le studio</a>
             </Button>
             <Button 
               asChild
@@ -80,7 +76,7 @@ const Index = () => {
               size="lg"
               className="border-2 border-white text-white hover:bg-white/10 font-inter font-semibold px-8 py-4 rounded-full text-lg backdrop-blur-sm"
             >
-              <a href="/gallery">Galerie & Carte</a>
+              <a href="#/gallery">Galerie & Carte</a>
             </Button>
           </div>
         </div>
@@ -164,7 +160,7 @@ const Index = () => {
             size="lg"
             className="font-inter font-medium"
           >
-            <a href="/journal">Commencer la lecture</a>
+            <a href="#/journal">Commencer la lecture</a>
           </Button>
         </div>
       </section>

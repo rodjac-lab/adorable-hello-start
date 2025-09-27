@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { getStudioVisibility, subscribeToStudioVisibility } from "@/utils/studioVisibility";
 
 const baseNavigation = [
-  { name: "Journal", href: "/journal", icon: Calendar },
-  { name: "Gastronomie", href: "/food", icon: Utensils },
-  { name: "Carte Interactive", href: "/gallery", icon: Map },
-  { name: "Lectures", href: "/recommendations", icon: BookOpenCheck },
+  { name: "Journal", href: "#/journal", icon: Calendar },
+  { name: "Gastronomie", href: "#/food", icon: Utensils },
+  { name: "Carte Interactive", href: "#/gallery", icon: Map },
+  { name: "Lectures", href: "#/recommendations", icon: BookOpenCheck },
 ];
 
 const HeaderComponent = () => {
@@ -29,7 +29,7 @@ const HeaderComponent = () => {
 
     return [
       ...baseNavigation,
-      { name: "Studio", href: "/studio", icon: LayoutDashboard },
+      { name: "Studio", href: "#/studio", icon: LayoutDashboard },
     ];
   }, [studioVisible]);
 
