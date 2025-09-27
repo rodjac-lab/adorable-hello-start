@@ -30,7 +30,13 @@
   <!-- This is a single page app for GitHub Pages -->
   <!-- Redirect to main page with route preserved -->
   <script>
-    window.location.href = '/adorable-hello-start/' + window.location.pathname.slice('/adorable-hello-start/'.length) + window.location.search + window.location.hash;
+    // Get the current path without the base
+    var pathArray = location.pathname.split('/');
+    var newPath = pathArray.slice(2).join('/'); // Remove /adorable-hello-start/
+
+    // Redirect to the main page with the route as a query parameter
+    var redirect = newPath ? '/?/' + newPath : '/';
+    window.location.replace('/adorable-hello-start' + redirect + location.search + location.hash);
   </script>
 </body>
 </html>
