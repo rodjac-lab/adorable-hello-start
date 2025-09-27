@@ -1,10 +1,23 @@
 import { Link } from "react-router-dom";
-import Map from "@/components/Map";
 import { Header } from "@/components/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useMapContent } from "@/hooks/useMapContent";
 import { DraftCallout } from "@/components/DraftCallout";
+import { Suspense, lazy } from "react";
+
+// Lazy load the Map component (contains heavy Mapbox GL JS)
+const Map = lazy(() => import("@/components/Map"));
+
+// Loading component for the Map
+const MapLoading = () => (
+  <Card className="h-[600px] flex items-center justify-center">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+      <p className="text-muted-foreground">Chargement de la carte interactive...</p>
+    </div>
+  </Card>
+);
 
 const Gallery = () => {
   const { entries, status, isLoading, error, isStudioEditing } = useMapContent();
@@ -48,7 +61,9 @@ const Gallery = () => {
                   Découvrez les lieux visités avec leurs positions sur la carte
                 </p>
               </div>
-              <Map />
+              <Suspense fallback={<MapLoading />}>
+                <Map />
+              </Suspense>
             </div>
           )}
         </div>

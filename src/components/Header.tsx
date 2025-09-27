@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, memo } from "react";
 import { Menu, X, BookOpen, Calendar, Utensils, Map, BookOpenCheck, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getStudioVisibility, subscribeToStudioVisibility } from "@/utils/studioVisibility";
@@ -10,7 +10,7 @@ const baseNavigation = [
   { name: "Lectures", href: "/recommendations", icon: BookOpenCheck },
 ];
 
-export function Header() {
+const HeaderComponent = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [studioVisible, setStudioVisible] = useState(() => getStudioVisibility());
 
@@ -117,4 +117,7 @@ export function Header() {
       )}
     </header>
   );
-}
+};
+
+// Memoize Header to prevent unnecessary re-renders
+export const Header = memo(HeaderComponent);

@@ -2,6 +2,7 @@ import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookOpen, Utensils, Camera, Book, Plane, MapPin } from "lucide-react";
+import { OptimizedImage } from "@/components/OptimizedImage";
 import heroImage from "@/assets/petra-hero.jpg";
 
 const navigationCards = [
@@ -42,9 +43,12 @@ const Index = () => {
       
       {/* Hero Section */}
       <div className="relative h-screen flex items-center justify-center overflow-hidden">
-        <div 
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: `url(${heroImage})` }}
+        <OptimizedImage
+          src={heroImage}
+          alt="Vue majestueuse de Petra en Jordanie"
+          className="absolute inset-0"
+          priority={true}
+          sizes="100vw"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10"></div>
         
