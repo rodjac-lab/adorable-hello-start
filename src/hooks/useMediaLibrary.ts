@@ -25,8 +25,9 @@ export const useMediaLibrary = () => {
       setIsLoading(false);
     }
 
-    const unsubscribe = subscribeToContentStore(state => {
-      setAssets(state.mediaLibrary);
+    const unsubscribe = subscribeToContentStore(() => {
+      const data = getMediaAssets();
+      setAssets(data);
     });
 
     return () => {
@@ -80,6 +81,5 @@ export const useMediaLibrary = () => {
     reload,
     saveAsset,
     deleteAsset,
-main
   };
 };

@@ -4,32 +4,7 @@ import { Header } from "@/components/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useMapContent } from "@/hooks/useMapContent";
-
-const DraftCallout = ({ isStudioEditing }: { isStudioEditing: boolean }) => (
-  <Card className="max-w-2xl mx-auto text-center shadow-lg">
-    <CardHeader>
-      <CardTitle className="text-2xl">✍️ Contenu en cours de rédaction</CardTitle>
-    </CardHeader>
-    <CardContent>
-      <p className="text-muted-foreground">
-        La carte interactive sera bientôt disponible.
-        {isStudioEditing ? (
-          <>
-            {" "}
-            Vous pouvez préparer les lieux à afficher depuis
-            {" "}
-            <Link to="/studio" className="text-primary underline font-medium">
-              Studio
-            </Link>
-            .
-          </>
-        ) : (
-          " Revenez prochainement pour explorer l'itinéraire complet."
-        )}
-      </p>
-    </CardContent>
-  </Card>
-);
+import { DraftCallout } from "@/components/DraftCallout";
 
 const Gallery = () => {
   const { entries, status, isLoading, error, isStudioEditing } = useMapContent();
@@ -64,7 +39,7 @@ const Gallery = () => {
               </CardContent>
             </Card>
           ) : showDraft ? (
-            <DraftCallout isStudioEditing={isStudioEditing} />
+            <DraftCallout isStudioEditing={isStudioEditing} message="La carte interactive sera bientôt disponible." />
           ) : (
             <div className="mb-16">
               <div className="text-center mb-8">

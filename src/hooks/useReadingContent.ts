@@ -25,8 +25,9 @@ export const useReadingContent = () => {
       setIsLoading(false);
     }
 
-    const unsubscribe = subscribeToContentStore(state => {
-      setItems(state.readingList);
+    const unsubscribe = subscribeToContentStore(() => {
+      const data = getReadingItems();
+      setItems(data);
     });
 
     return () => {
@@ -82,4 +83,3 @@ export const useReadingContent = () => {
     deleteItem,
   };
 };
- main

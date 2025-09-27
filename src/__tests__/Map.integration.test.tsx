@@ -94,7 +94,6 @@ describe('Map Integration Tests', () => {
       allEntries: mockEntries,
       customEntries: mockEntries,
       isCustom: vi.fn().mockReturnValue(false),
-main
       isLoading: false,
       error: null,
       isStudioEditing: false,

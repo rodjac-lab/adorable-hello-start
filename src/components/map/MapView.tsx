@@ -3,7 +3,7 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useMapContent } from '@/lib/contentStore';
+import { useMapContent } from '@/hooks/useMapContent';
 import type { MapLocation } from '@/types/map';
 
 const MAPLIBRE_STYLE = 'https://demotiles.maplibre.org/style.json';

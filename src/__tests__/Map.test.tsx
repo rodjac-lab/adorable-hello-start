@@ -3,8 +3,6 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import Map from '@/components/Map';
-
- main
 import * as geocodingModule from '@/lib/geocoding';
 import { mapContentActions } from '@/lib/contentStore';
 import { forceRuntimeMode } from '@/utils/environment';
@@ -16,7 +14,6 @@ const mockUseMapContent = vi.fn();
 vi.mock('@/hooks/useMapContent', () => ({
   useMapContent: () => mockUseMapContent()
 }));
-main
 
 const mapboxControlMock = vi.fn();
 const markerMock = vi.fn(() => ({
@@ -106,7 +103,6 @@ describe('Map component', () => {
     it('devrait afficher le formulaire de configuration Mapbox quand aucun token n\'est fourni', () => {
 
       mockUseJournalEntries.mockReturnValue(createHookValue());
-main
 
       render(<Map />);
 
@@ -122,7 +118,6 @@ main
         allEntries: [],
         customEntries: [],
       }));
-main
 
       render(<Map />);
 
@@ -168,12 +163,10 @@ main
     it('devrait afficher les lieux détectés dans le modal de validation', async () => {
 
       mockUseJournalEntries.mockReturnValue(createHookValue());
-main
 
       mockGeocodeJournalEntries.mockResolvedValue(expectedGeocodeResults);
 
       render(<Map />);
- main
 
   it('affiche le configurateur en mode studio', () => {
     render(<Map />);
@@ -273,6 +266,5 @@ main
       // Résoudre la promesse pour nettoyer
       resolveGeocode!(expectedGeocodeResults);
     });
- main
   });
 });

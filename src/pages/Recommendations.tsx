@@ -2,20 +2,13 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Header } from "@/components/Header";
-
-import { getReadingRecommendations } from "@/lib/contentStore";
-
-const Recommendations = () => {
-  const books = getReadingRecommendations();
-
-  const getRatingStars = (rating: number) => {
-    return "⭐".repeat(rating);
-  };
-main
+import { useReadingContent } from "@/hooks/useReadingContent";
+import { ReadingCard } from "@/components/ReadingCard";
+import { DraftCallout } from "@/components/DraftCallout";
 
 const Recommendations = () => {
-  const { recommendations, status, isLoading, error, isStudioEditing } = useReadingContent();
-  const showDraft = status === "draft" || recommendations.length === 0;
+  const { items: recommendations, isLoading, error } = useReadingContent();
+  const showDraft = recommendations.length === 0;
 
   return (
     <>
@@ -46,7 +39,7 @@ const Recommendations = () => {
               </CardContent>
             </Card>
           ) : showDraft ? (
-            <DraftCallout isStudioEditing={isStudioEditing} />
+            <DraftCallout isStudioEditing={false} />
           ) : (
             <>
               {/* Introduction */}

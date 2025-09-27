@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { useJournalEntries } from '@/hooks/useJournalEntries';
 import { geocodeJournalEntries } from '@/lib/geocoding';
-import { useMapContent } from '@/lib/contentStore';
+import { useMapContent } from '@/hooks/useMapContent';
 import { MapValidationPanel } from './MapValidationPanel';
 
 export const MapConfigurator = () => {

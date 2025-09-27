@@ -1,4 +1,4 @@
-import { getJournalEntries, replaceJournalEntries, forceContentMigration } from '@/lib/contentStore';
+import { loadJournalEntries, saveJournalEntries, diagnosticTools, type JournalEntry } from '@/lib/journalStorage';
 
 /**
  * Utilitaire pour nettoyer les données de test et récupérer les vraies entrées
@@ -6,8 +6,8 @@ import { getJournalEntries, replaceJournalEntries, forceContentMigration } from 
 
 export const cleanupTestData = async () => {
   try {
-    const entries = getJournalEntries();
-    const cleanEntries = entries.filter(entry => {
+    const entries = loadJournalEntries();
+    const cleanEntries = entries.filter((entry: JournalEntry) => {
       if (entry.day === 3 && entry.title?.includes('Petra')) {
         return false;
       }
@@ -15,7 +15,7 @@ export const cleanupTestData = async () => {
     });
 
     if (cleanEntries.length !== entries.length) {
-      await replaceJournalEntries(cleanEntries);
+      await saveJournalEntries(cleanEntries);
     }
 
     return cleanEntries;
@@ -26,6 +26,6 @@ export const cleanupTestData = async () => {
 };
 
 export const forceStorageReset = () => {
-  forceContentMigration();
+  diagnosticTools.resetStorage();
   console.log('🔄 Version de stockage réinitialisée');
 };

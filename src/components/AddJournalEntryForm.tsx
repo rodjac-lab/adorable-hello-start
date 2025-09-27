@@ -222,7 +222,6 @@ export const useJournalEntryForm = (options: UseJournalEntryFormOptions = {}): U
     resetForm,
   };
 };
-main
 
 export interface JournalEntryFormProps {
   form: UseFormReturn<JournalEntryFormData>;
@@ -381,7 +380,6 @@ export const JournalEntryForm: React.FC<JournalEntryFormProps> = ({
             <p className="text-sm text-destructive">{form.formState.errors.link.message}</p>
           )}
         </div>
-main
 
         {/* Photo Upload */}
         <div className="space-y-2">

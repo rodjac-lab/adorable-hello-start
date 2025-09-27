@@ -1,5 +1,10 @@
 
 import type { JournalEntry } from '@/lib/journalStorage';
+import { contentStore as storeContentStore } from '@/store/contentStore';
+import type {
+  FoodExperience as StoreFoodExperience,
+  ReadingRecommendation as StoreReadingRecommendation
+} from '@/store/contentStore';
 
 export type ContentSource = 'canonical' | 'custom';
 
@@ -16,6 +21,7 @@ export interface PlaceReference {
 }
 
 export interface FoodExperience {
+  id: string;
   name: string;
   type: string;
   description: string;
@@ -353,11 +359,168 @@ export const getPlaceReferences = (): PlaceReference[] => {
   return [...canonicalPlaceReferences];
 };
 
-export const getFoodExperiences = (): FoodExperience[] => {
-  return [...canonicalFoodExperiences];
+export const getFoodExperiences = (): StoreFoodExperience[] => {
+  const currentState = storeContentStore.getState();
+  return currentState.food.experiences;
 };
 
 export const getReadingRecommendations = (): ReadingRecommendation[] => {
   return [...canonicalReadingRecommendations];
 };
-main
+
+// Additional types and interfaces needed by hooks
+export interface MediaAsset {
+  id: string;
+  name: string;
+  type: string;
+  url: string;
+  size: number;
+  createdAt: string;
+}
+
+export interface ReadingItem {
+  id: string;
+  title: string;
+  author: string;
+  type: string;
+  description: string;
+  why: string;
+  amazon: string;
+  rating: number;
+}
+
+export interface MapLocationContent {
+  id: string;
+  name: string;
+  coordinates: [number, number];
+  description: string;
+  day?: number;
+}
+
+// Bridge functions to the store
+export const subscribeToContentStore = (callback: () => void) => {
+  return storeContentStore.subscribe(callback);
+};
+
+// Food Experience functions
+export const saveFoodExperience = (experience: Partial<StoreFoodExperience>): StoreFoodExperience => {
+  const newExperience: StoreFoodExperience = {
+    id: experience.id || Date.now().toString(),
+    name: experience.name || '',
+    type: experience.type || '',
+    description: experience.description || '',
+    experience: experience.experience || '',
+    rating: experience.rating || 0,
+    location: experience.location || '',
+    price: experience.price || ''
+  };
+
+  const currentState = storeContentStore.getState();
+  const updatedExperiences = [...currentState.food.experiences, newExperience];
+  storeContentStore.updateFood({ experiences: updatedExperiences });
+  return newExperience;
+};
+
+export const removeFoodExperience = (id: string): void => {
+  const currentState = storeContentStore.getState();
+  const updatedExperiences = currentState.food.experiences.filter(exp => exp.id !== id);
+  storeContentStore.updateFood({ experiences: updatedExperiences });
+};
+
+// Media Asset functions
+export const getMediaAssets = (): MediaAsset[] => {
+  // Return empty array for now - can be implemented when media store is ready
+  return [];
+};
+
+export const saveMediaAsset = (asset: Partial<MediaAsset>): MediaAsset => {
+  const newAsset: MediaAsset = {
+    id: asset.id || Date.now().toString(),
+    name: asset.name || '',
+    type: asset.type || '',
+    url: asset.url || '',
+    size: asset.size || 0,
+    createdAt: asset.createdAt || new Date().toISOString()
+  };
+  // Implementation needed when media store is ready
+  return newAsset;
+};
+
+export const removeMediaAsset = (id: string): void => {
+  // Implementation needed when media store is ready
+};
+
+// Reading Item functions
+export const getReadingItems = (): ReadingItem[] => {
+  const currentState = storeContentStore.getState();
+  return currentState.reading.recommendations.map(rec => ({
+    id: rec.id,
+    title: rec.title,
+    author: rec.author,
+    type: rec.type,
+    description: rec.description,
+    why: rec.why,
+    amazon: rec.amazon,
+    rating: rec.rating
+  }));
+};
+
+export const saveReadingItem = (item: Partial<ReadingItem>): ReadingItem => {
+  const newItem: StoreReadingRecommendation = {
+    id: item.id || Date.now().toString(),
+    title: item.title || '',
+    author: item.author || '',
+    type: item.type || '',
+    description: item.description || '',
+    why: item.why || '',
+    amazon: item.amazon || '',
+    rating: item.rating || 0
+  };
+
+  const currentState = storeContentStore.getState();
+  const updatedRecommendations = [...currentState.reading.recommendations, newItem];
+  storeContentStore.updateReading({ recommendations: updatedRecommendations });
+  return {
+    id: newItem.id,
+    title: newItem.title,
+    author: newItem.author,
+    type: newItem.type,
+    description: newItem.description,
+    why: newItem.why,
+    amazon: newItem.amazon,
+    rating: newItem.rating
+  };
+};
+
+export const removeReadingItem = (id: string): void => {
+  const currentState = storeContentStore.getState();
+  const updatedRecommendations = currentState.reading.recommendations.filter(rec => rec.id !== id);
+  storeContentStore.updateReading({ recommendations: updatedRecommendations });
+};
+
+// Map Location functions
+export const getMapLocations = (): MapLocationContent[] => {
+  // Return empty array for now - can be implemented when map store is ready
+  return [];
+};
+
+export const saveMapLocation = (location: Partial<MapLocationContent>): MapLocationContent => {
+  const newLocation: MapLocationContent = {
+    id: location.id || Date.now().toString(),
+    name: location.name || '',
+    coordinates: location.coordinates || [0, 0],
+    description: location.description || '',
+    day: location.day
+  };
+  // Implementation needed when map store is ready
+  return newLocation;
+};
+
+export const removeMapLocation = (id: string): void => {
+  // Implementation needed when map store is ready
+};
+
+// Map content actions
+export const mapContentActions = {
+  // Map actions will be implemented here
+};

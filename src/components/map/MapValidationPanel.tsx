@@ -10,7 +10,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Plus, Trash2 } from 'lucide-react';
-import { useMapContent, mapContentActions } from '@/lib/contentStore';
+import { useMapContent } from '@/hooks/useMapContent';
+import { mapContentActions } from '@/lib/contentStore';
 import type { MapLocation } from '@/types/map';
 
 interface MapPreviewProps {

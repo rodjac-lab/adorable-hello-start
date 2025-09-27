@@ -168,7 +168,6 @@ const Studio = () => {
       </div>
 
     </>
- main
   );
 };
 

@@ -1,12 +1,12 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import {
-  type FoodExperience,
   getFoodExperiences,
   saveFoodExperience,
   removeFoodExperience,
   subscribeToContentStore,
 } from '@/lib/contentStore';
+import type { FoodExperience } from '@/store/contentStore';
 
 export const useFoodContent = () => {
   const [experiences, setExperiences] = useState<FoodExperience[]>([]);
@@ -25,8 +25,9 @@ export const useFoodContent = () => {
       setIsLoading(false);
     }
 
-    const unsubscribe = subscribeToContentStore(state => {
-      setExperiences(state.foodExperiences);
+    const unsubscribe = subscribeToContentStore(() => {
+      const data = getFoodExperiences();
+      setExperiences(data);
     });
 
     return () => {
@@ -82,4 +83,3 @@ export const useFoodContent = () => {
     deleteExperience,
   };
 };
-main

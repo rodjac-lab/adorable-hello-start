@@ -25,8 +25,9 @@ export const useMapContent = () => {
       setIsLoading(false);
     }
 
-    const unsubscribe = subscribeToContentStore(state => {
-      setLocations(state.mapLocations);
+    const unsubscribe = subscribeToContentStore(() => {
+      const data = getMapLocations();
+      setLocations(data);
     });
 
     return () => {
@@ -80,6 +81,5 @@ export const useMapContent = () => {
     reload,
     saveLocation,
     deleteLocation,
-    main
   };
 };

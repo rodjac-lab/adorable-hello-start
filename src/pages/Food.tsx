@@ -2,20 +2,13 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Header } from "@/components/Header";
-
-import { getFoodExperiences } from "@/lib/contentStore";
-
-const Food = () => {
-  const foodExperiences = getFoodExperiences();
-
-  const getRatingStars = (rating: number) => {
-    return "⭐".repeat(rating);
-  };
- main
+import { useFoodContent } from "@/hooks/useFoodContent";
+import { FoodExperienceCard } from "@/components/FoodExperienceCard";
+import { DraftCallout } from "@/components/DraftCallout";
 
 const Food = () => {
-  const { experiences, status, isLoading, error, isStudioEditing } = useFoodContent();
-  const showDraft = status === "draft" || experiences.length === 0;
+  const { experiences, isLoading, error } = useFoodContent();
+  const showDraft = experiences.length === 0;
 
   return (
     <>
@@ -46,7 +39,7 @@ const Food = () => {
               </CardContent>
             </Card>
           ) : showDraft ? (
-            <DraftCallout isStudioEditing={isStudioEditing} />
+            <DraftCallout isStudioEditing={false} />
           ) : (
             <>
               {/* Introduction */}
