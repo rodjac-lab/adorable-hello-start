@@ -1,14 +1,10 @@
-import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Header } from "@/components/Header";
-import { useFoodContent } from "@/hooks/useFoodContent";
-import { FoodExperienceCard } from "@/components/FoodExperienceCard";
-import { DraftCallout } from "@/components/DraftCallout";
+import { getFoodExperiences, FoodExperience } from "@/data/foodExperiences";
 
 const Food = () => {
-  const { experiences, isLoading, error } = useFoodContent();
-  const showDraft = experiences.length === 0;
+  const experiences = getFoodExperiences();
 
   return (
     <>
@@ -26,65 +22,88 @@ const Food = () => {
         </div>
 
         <div className="container mx-auto px-4 py-16 space-y-8">
-          {error && (
-            <Alert className="max-w-2xl mx-auto">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+          {/* Introduction */}
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-2xl">🍽️ L'art de vivre jordanien</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground leading-relaxed">
+                La cuisine jordanienne reflète la richesse culturelle du pays : influences bédouines, palestiniennes, syriennes
+                et libanaises se mélangent pour créer une gastronomie unique. Chaque repas est une invitation au partage, une
+                célébration de l'hospitalité légendaire jordanienne.
+              </p>
+            </CardContent>
+          </Card>
 
-          {isLoading ? (
-            <Card className="max-w-2xl mx-auto shadow-lg">
-              <CardContent className="py-10 text-center text-muted-foreground">
-                Chargement des expériences culinaires...
-              </CardContent>
-            </Card>
-          ) : showDraft ? (
-            <DraftCallout isStudioEditing={false} />
-          ) : (
-            <>
-              {/* Introduction */}
-              <Card className="shadow-lg">
-                <CardHeader>
-                  <CardTitle className="text-2xl">🍽️ L'art de vivre jordanien</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground leading-relaxed">
-                    La cuisine jordanienne reflète la richesse culturelle du pays : influences bédouines, palestiniennes, syriennes
-                    et libanaises se mélangent pour créer une gastronomie unique. Chaque repas est une invitation au partage, une
-                    célébration de l'hospitalité légendaire jordanienne.
-                  </p>
-                </CardContent>
-              </Card>
+          <div className="grid gap-8 max-w-4xl mx-auto">
+            {experiences.map((experience) => (
+              <FoodExperienceCard key={experience.id} experience={experience} />
+            ))}
+          </div>
 
-              <div className="grid gap-8 max-w-4xl mx-auto">
-                {experiences.map((experience) => (
-                  <FoodExperienceCard key={experience.id} experience={experience} />
-                ))}
-              </div>
+          {/* Cultural Note */}
+          <Card className="mt-12 max-w-4xl mx-auto shadow-lg border-l-4 border-l-primary">
+            <CardHeader>
+              <CardTitle className="text-xl text-primary">🌟 L'hospitalité jordanienne à table</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground leading-relaxed">
+                En Jordanie, refuser un thé ou un café est presque impossible ! L'hospitalité ("karam" en arabe) est
+                profondément ancrée dans la culture. Les repas sont des moments sacrés de partage, où l'on prend le temps de
+                discuter, de rire et de créer des liens. J'ai été invité à plusieurs reprises par des inconnus qui
+                souhaitaient simplement partager leur table et leur culture.
+              </p>
+            </CardContent>
+          </Card>
 
-              {/* Cultural Note */}
-              <Card className="mt-12 max-w-4xl mx-auto shadow-lg border-l-4 border-l-primary">
-                <CardHeader>
-                  <CardTitle className="text-xl text-primary">🌟 L'hospitalité jordanienne à table</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground leading-relaxed">
-                    En Jordanie, refuser un thé ou un café est presque impossible ! L'hospitalité ("karam" en arabe) est
-                    profondément ancrée dans la culture. Les repas sont des moments sacrés de partage, où l'on prend le temps de
-                    discuter, de rire et de créer des liens. J'ai été invité à plusieurs reprises par des inconnus qui
-                    souhaitaient simplement partager leur table et leur culture.
-                  </p>
-                </CardContent>
-              </Card>
-
-              <div className="text-center mt-12">
-                <p className="text-muted-foreground">Les saveurs continuent de danser dans mes souvenirs... 🌶️</p>
-              </div>
-            </>
-          )}
+          <div className="text-center mt-12">
+            <p className="text-muted-foreground">Les saveurs continuent de danser dans mes souvenirs... 🌶️</p>
+          </div>
         </div>
       </div>
     </>
+  );
+};
+
+const FoodExperienceCard = ({ experience }: { experience: FoodExperience }) => {
+  const renderStars = (rating: number) => {
+    return "⭐".repeat(rating);
+  };
+
+  return (
+    <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+            Jour {experience.day}
+          </Badge>
+          <div className="text-lg">{renderStars(experience.rating)}</div>
+        </div>
+        <CardTitle className="text-2xl">{experience.dish}</CardTitle>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span>📍</span>
+          <span>{experience.location}</span>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-muted-foreground leading-relaxed">{experience.description}</p>
+
+        {experience.cultural_note && (
+          <Card className="bg-secondary/10 border-secondary/20">
+            <CardContent className="pt-4">
+              <div className="flex items-start gap-2">
+                <span className="text-secondary text-lg">💡</span>
+                <div>
+                  <p className="font-medium text-secondary mb-1">Note culturelle</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{experience.cultural_note}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 
