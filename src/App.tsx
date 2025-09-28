@@ -10,6 +10,7 @@ const Journal = lazy(() => import("./pages/Journal"));
 const Food = lazy(() => import("./pages/Food"));
 const Gallery = lazy(() => import("./pages/Gallery"));
 const Recommendations = lazy(() => import("./pages/Recommendations"));
+const Editor = lazy(() => import("./pages/Editor"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Loading component for Suspense fallbacks
@@ -34,6 +35,7 @@ const App = () => (
           <Route path="/food" element={<Food />} />
           <Route path="/gallery" element={<Gallery />} />
           <Route path="/recommendations" element={<Recommendations />} />
+          <Route path="/editor" element={<Editor />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
