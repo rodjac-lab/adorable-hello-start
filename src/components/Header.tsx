@@ -1,13 +1,14 @@
 import { useState, memo } from "react";
 import { Menu, X, BookOpen, Calendar, Utensils, Map, BookOpenCheck, Edit3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 const navigation = [
-  { name: "Journal", href: "/journal", icon: Calendar },
-  { name: "Gastronomie", href: "/food", icon: Utensils },
-  { name: "Carte Interactive", href: "/gallery", icon: Map },
-  { name: "Lectures", href: "/recommendations", icon: BookOpenCheck },
-  { name: "Éditeur", href: "/editor", icon: Edit3 },
+  { name: "Journal", to: "/journal", icon: Calendar },
+  { name: "Gastronomie", to: "/food", icon: Utensils },
+  { name: "Carte Interactive", to: "/gallery", icon: Map },
+  { name: "Lectures", to: "/recommendations", icon: BookOpenCheck },
+  { name: "Éditeur", to: "/editor", icon: Edit3 },
 ];
 
 const HeaderComponent = () => {
@@ -17,10 +18,10 @@ const HeaderComponent = () => {
     <header className="absolute top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
       <nav className="mx-auto flex max-w-7xl items-center justify-between p-6 lg:px-8" aria-label="Global">
         <div className="flex lg:flex-1">
-          <a href="/" className="-m-1.5 p-1.5 flex items-center gap-2">
+          <Link to="/" className="-m-1.5 p-1.5 flex items-center gap-2">
             <BookOpen className="h-8 w-8 text-primary" />
             <span className="font-playfair font-semibold text-xl text-foreground">Jordanie</span>
-          </a>
+          </Link>
         </div>
 
         <div className="flex lg:hidden">
@@ -39,14 +40,14 @@ const HeaderComponent = () => {
           {navigation.map((item) => {
             const IconComponent = item.icon;
             return (
-              <a
+              <Link
                 key={item.name}
-                href={item.href}
+                to={item.to}
                 className="flex items-center gap-2 px-4 py-2 text-sm font-inter font-medium leading-6 text-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-all duration-200 group"
               >
                 <IconComponent className="h-4 w-4 group-hover:scale-110 transition-transform" />
                 {item.name}
-              </a>
+              </Link>
             );
           })}
         </div>
@@ -58,10 +59,10 @@ const HeaderComponent = () => {
           <div className="fixed inset-0 z-50"></div>
           <div className="fixed inset-y-0 right-0 z-50 w-full overflow-y-auto bg-background px-6 py-6 sm:max-w-sm sm:ring-1 sm:ring-border">
             <div className="flex items-center justify-between">
-              <a href="/" className="-m-1.5 p-1.5 flex items-center gap-2">
+              <Link to="/" className="-m-1.5 p-1.5 flex items-center gap-2">
                 <BookOpen className="h-8 w-8 text-primary" />
                 <span className="font-playfair font-semibold text-xl">Jordanie</span>
-              </a>
+              </Link>
               <Button
                 variant="ghost"
                 size="icon"
@@ -78,15 +79,15 @@ const HeaderComponent = () => {
                   {navigation.map((item) => {
                     const IconComponent = item.icon;
                     return (
-                      <a
+                      <Link
                         key={item.name}
-                        href={item.href}
+                        to={item.to}
                         className="flex items-center gap-3 -mx-3 rounded-lg px-3 py-3 text-base font-inter font-medium leading-7 text-foreground hover:bg-muted group"
                         onClick={() => setMobileMenuOpen(false)}
                       >
                         <IconComponent className="h-5 w-5 group-hover:scale-110 transition-transform" />
                         {item.name}
-                      </a>
+                      </Link>
                     );
                   })}
                 </div>

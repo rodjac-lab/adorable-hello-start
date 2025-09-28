@@ -2,6 +2,7 @@ import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookOpen, Utensils, Camera, Book, Plane, MapPin } from "lucide-react";
+import { Link } from "react-router-dom";
 import heroImage from "@/assets/petra-hero.jpg";
 
 const navigationCards = [
@@ -9,28 +10,28 @@ const navigationCards = [
     title: "Journal quotidien",
     description: "Suivez jour par jour mes aventures, découvertes et impressions",
     icon: BookOpen,
-    href: "#/journal",
+    to: "/journal",
     gradient: "from-primary/20 to-accent/20",
   },
   {
     title: "Gastronomie",
     description: "Un voyage culinaire à travers les saveurs jordaniennes",
     icon: Utensils,
-    href: "#/food",
+    to: "/food",
     gradient: "from-orange-500/20 to-red-500/20",
   },
   {
     title: "Galerie & Carte",
     description: "Les plus beaux moments et l'itinéraire interactif",
     icon: Camera,
-    href: "#/gallery",
+    to: "/gallery",
     gradient: "from-blue-500/20 to-purple-500/20",
   },
   {
     title: "Lectures",
     description: "Mes recommandations pour approfondir la découverte",
     icon: Book,
-    href: "#/recommendations",
+    to: "/recommendations",
     gradient: "from-green-500/20 to-emerald-500/20",
   },
 ];
@@ -68,7 +69,7 @@ const Index = () => {
               size="lg"
               className="bg-white text-primary hover:bg-white/90 font-inter font-semibold px-8 py-4 rounded-full text-lg shadow-elegant"
             >
-              <a href="#/studio">🚑 Ouvrir le studio</a>
+              <Link to="/editor">🚑 Ouvrir le studio</Link>
             </Button>
             <Button 
               asChild
@@ -76,7 +77,7 @@ const Index = () => {
               size="lg"
               className="border-2 border-white text-white hover:bg-white/10 font-inter font-semibold px-8 py-4 rounded-full text-lg backdrop-blur-sm"
             >
-              <a href="#/gallery">Galerie & Carte</a>
+              <Link to="/gallery">Galerie & Carte</Link>
             </Button>
           </div>
         </div>
@@ -126,9 +127,9 @@ const Index = () => {
                   variant="outline"
                   className="w-full font-inter font-medium group-hover:bg-primary group-hover:text-primary-foreground group-hover:border-primary transition-all duration-300"
                 >
-                  <a href={card.href}>
+                  <Link to={card.to}>
                     Explorer →
-                  </a>
+                  </Link>
                 </Button>
               </CardContent>
             </Card>
@@ -160,7 +161,7 @@ const Index = () => {
             size="lg"
             className="font-inter font-medium"
           >
-            <a href="#/journal">Commencer la lecture</a>
+            <Link to="/journal">Commencer la lecture</Link>
           </Button>
         </div>
       </section>

@@ -27,7 +27,7 @@ const App = () => (
   <TooltipProvider>
     <Toaster />
     <Sonner />
-    <BrowserRouter basename="/adorable-hello-start">
+    <BrowserRouter basename="/adorable-hello-start/">
       <Suspense fallback={<LoadingPage />}>
         <Routes>
           <Route path="/" element={<Index />} />
