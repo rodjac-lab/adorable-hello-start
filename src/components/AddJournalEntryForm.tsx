@@ -1,7 +1,6 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm, UseFormReturn } from "react-hook-form";
- main
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
@@ -55,8 +54,6 @@ const parseFrenchDate = (dateString: string): Date | undefined => {
     return undefined;
   }
 };
-
- main
 
 // Define the schema for form validation
 const journalEntrySchema = z.object({
@@ -132,9 +129,7 @@ interface UseJournalEntryFormOptions {
 export const useJournalEntryForm = (options: UseJournalEntryFormOptions = {}): UseJournalEntryFormResult => {
   const { editEntry } = options;
   const [showPreview, setShowPreview] = useState(false);
-  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
-  const [isDragActive, setIsDragActive] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
 
   const form = useForm<JournalEntryFormData>({
     resolver: zodResolver(journalEntrySchema),
@@ -142,7 +137,6 @@ export const useJournalEntryForm = (options: UseJournalEntryFormOptions = {}): U
   });
 
   const watchedValues = form.watch();
-  const photos = watchedValues.photos || [];
 
 
   useEffect(() => {
@@ -201,7 +195,6 @@ export const useJournalEntryForm = (options: UseJournalEntryFormOptions = {}): U
     const updatedPhotos = (form.getValues("photos") || []).filter(photo => photo !== photoToRemove);
     form.setValue("photos", updatedPhotos);
   }, [form]);
- main
 
   const resetForm = useCallback((entry?: AddJournalEntryFormProps["editEntry"]) => {
     const defaults = getDefaultValues(entry) as JournalEntryFormData;
@@ -599,7 +592,6 @@ export const AddJournalEntryForm: React.FC<AddJournalEntryFormProps> = ({
       </Card>
 
       <JournalEntryPreview visible={showPreview} values={watchedValues} />
- main
     </div>
   );
 };
