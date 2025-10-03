@@ -16,8 +16,8 @@ const jordanLocations = [
   { name: "Mont Nebo", day: 12, coords: [35.7269, 31.7687], description: "Vue sur la Terre Promise" }
 ];
 
-// Mapbox public token - get yours free at https://mapbox.com
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw';
+// Mapbox token from environment variables
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 
 const SimpleMap = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -140,7 +140,10 @@ const SimpleMap = () => {
 
     // Cleanup function
     return () => {
+      // Clean up map instance
       map.current?.remove();
+      // Clean up window function to prevent memory leak
+      delete (window as any).navigateToJournal;
     };
   }, [navigate]);
 

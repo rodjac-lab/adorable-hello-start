@@ -1,3 +1,4 @@
+import { memo, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Header } from "@/components/Header";
@@ -66,10 +67,8 @@ const Food = () => {
   );
 };
 
-const FoodExperienceCard = ({ experience }: { experience: FoodExperience }) => {
-  const renderStars = (rating: number) => {
-    return "⭐".repeat(rating);
-  };
+const FoodExperienceCard = memo(({ experience }: { experience: FoodExperience }) => {
+  const stars = useMemo(() => "⭐".repeat(experience.rating), [experience.rating]);
 
   return (
     <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
@@ -78,7 +77,7 @@ const FoodExperienceCard = ({ experience }: { experience: FoodExperience }) => {
           <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
             Jour {experience.day}
           </Badge>
-          <div className="text-lg">{renderStars(experience.rating)}</div>
+          <div className="text-lg">{stars}</div>
         </div>
         <CardTitle className="text-2xl">{experience.dish}</CardTitle>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -105,6 +104,6 @@ const FoodExperienceCard = ({ experience }: { experience: FoodExperience }) => {
       </CardContent>
     </Card>
   );
-};
+}, (prevProps, nextProps) => prevProps.experience.day === nextProps.experience.day);
 
 export default Food;

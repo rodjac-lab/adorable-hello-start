@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -66,7 +67,7 @@ const Recommendations = () => {
   );
 };
 
-const BookRecommendationCard = ({ book }: { book: BookRecommendation }) => {
+const BookRecommendationCard = memo(({ book }: { book: BookRecommendation }) => {
   return (
     <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
       <CardHeader>
@@ -106,6 +107,6 @@ const BookRecommendationCard = ({ book }: { book: BookRecommendation }) => {
       </CardContent>
     </Card>
   );
-};
+}, (prevProps, nextProps) => prevProps.book.title === nextProps.book.title);
 
 export default Recommendations;

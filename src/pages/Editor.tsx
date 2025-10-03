@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -157,6 +157,12 @@ const JournalEditor = ({ entries, setEntries }: {
   const [editingDay, setEditingDay] = useState<number | null>(null);
   const [formData, setFormData] = useState<Partial<JournalEntry>>({});
 
+  // Memoize sorted entries to avoid O(n²) on every render
+  const sortedEntries = useMemo(() =>
+    [...entries].sort((a, b) => a.day - b.day),
+    [entries]
+  );
+
   const startEdit = (day?: number) => {
     if (day) {
       const entry = entries.find(e => e.day === day);
@@ -270,7 +276,7 @@ const JournalEditor = ({ entries, setEntries }: {
       )}
 
       <div className="grid gap-4">
-        {entries.sort((a, b) => a.day - b.day).map((entry) => (
+        {sortedEntries.map((entry) => (
           <Card key={entry.day}>
             <CardHeader>
               <div className="flex justify-between items-start">
@@ -307,6 +313,12 @@ const FoodEditor = ({ experiences, setExperiences }: {
 }) => {
   const [editing, setEditing] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<FoodExperience>>({});
+
+  // Memoize sorted experiences to avoid O(n²) on every render
+  const sortedExperiences = useMemo(() =>
+    [...experiences].sort((a, b) => a.day - b.day),
+    [experiences]
+  );
 
   const startEdit = (id?: string) => {
     if (id) {
@@ -421,7 +433,7 @@ const FoodEditor = ({ experiences, setExperiences }: {
       )}
 
       <div className="grid gap-4">
-        {experiences.sort((a, b) => a.day - b.day).map((exp) => (
+        {sortedExperiences.map((exp) => (
           <Card key={exp.id}>
             <CardHeader>
               <div className="flex justify-between items-start">

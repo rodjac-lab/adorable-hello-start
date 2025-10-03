@@ -146,6 +146,21 @@ export const useJournalEntryForm = (options: UseJournalEntryFormOptions = {}): U
     setShowPreview(false);
   }, [editEntry, form]);
 
+  // Cleanup blob URLs to prevent memory leaks
+  useEffect(() => {
+    const blobUrls = uploadedFiles.filter(url => url.startsWith('blob:'));
+
+    return () => {
+      blobUrls.forEach(url => {
+        try {
+          URL.revokeObjectURL(url);
+        } catch (error) {
+          // Ignore errors when revoking URLs
+        }
+      });
+    };
+  }, [uploadedFiles]);
+
   const togglePreview = useCallback(() => {
     setShowPreview((prev) => !prev);
   }, []);
@@ -191,6 +206,15 @@ export const useJournalEntryForm = (options: UseJournalEntryFormOptions = {}): U
   }, [form]);
 
   const removePhoto = useCallback((photoToRemove: string) => {
+    // Revoke blob URL if it exists
+    if (photoToRemove.startsWith('blob:')) {
+      try {
+        URL.revokeObjectURL(photoToRemove);
+      } catch (error) {
+        // Ignore errors when revoking URLs
+      }
+    }
+
     setUploadedFiles((prev) => prev.filter((file) => file !== photoToRemove));
     const updatedPhotos = (form.getValues("photos") || []).filter(photo => photo !== photoToRemove);
     form.setValue("photos", updatedPhotos);

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Header } from "@/components/Header";
@@ -50,7 +50,7 @@ const Journal = () => {
   );
 };
 
-const JournalEntryCard = ({ entry }: { entry: JournalEntry }) => {
+const JournalEntryCard = memo(({ entry }: { entry: JournalEntry }) => {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<string>("");
 
@@ -137,6 +137,6 @@ const JournalEntryCard = ({ entry }: { entry: JournalEntry }) => {
       </Dialog>
     </>
   );
-};
+}, (prevProps, nextProps) => prevProps.entry.day === nextProps.entry.day);
 
 export default Journal;
