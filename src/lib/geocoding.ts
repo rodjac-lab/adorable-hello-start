@@ -236,46 +236,71 @@ export async function geocodeJournalEntries(
   let processed = 0;
 
   try {
-    for (const parsedEntry of parsedEntries) {
-      const classifiedLocations = classifyLocations(
+    // Flatten all locations to process them in parallel
+    const allLocations = parsedEntries.flatMap((parsedEntry) =>
+      classifyLocations(
         parsedEntry.parsed,
         parsedEntry.day,
         parsedEntry.journalEntry
-      );
+      )
+    );
 
-      for (const location of classifiedLocations) {
+    // Process all locations in parallel with Promise.all
+    const results = await Promise.all(
+      allLocations.map(async (location) => {
         try {
           const geocodeResult = await geocodeLocation(location.name, mapboxToken, mode);
 
+          processed += 1;
+          resolvedOptions.onProgress?.(processed, totalCount);
+
           if (geocodeResult) {
-            pending.push({
-              ...location,
-              coordinates: geocodeResult.coordinates
-            });
+            return {
+              success: true as const,
+              location: {
+                ...location,
+                coordinates: geocodeResult.coordinates
+              }
+            };
           } else {
-            failed.push({
+            return {
+              success: false as const,
+              failed: {
+                name: location.name,
+                day: location.day,
+                journalEntry: location.journalEntry,
+                reason:
+                  mode === 'studio'
+                    ? "Aucune coordonnée trouvée"
+                    : 'Mode lecture: géocodage distant désactivé'
+              }
+            };
+          }
+        } catch (error) {
+          processed += 1;
+          resolvedOptions.onProgress?.(processed, totalCount);
+
+          return {
+            success: false as const,
+            failed: {
               name: location.name,
               day: location.day,
               journalEntry: location.journalEntry,
-              reason:
-                mode === 'studio'
-                  ? "Aucune coordonnée trouvée"
-                  : 'Mode lecture: géocodage distant désactivé'
-            });
-          }
-        } catch (error) {
-          failed.push({
-            name: location.name,
-            day: location.day,
-            journalEntry: location.journalEntry,
-            reason: formatFailureReason(mode, mapboxToken, error)
-          });
+              reason: formatFailureReason(mode, mapboxToken, error)
+            }
+          };
         }
+      })
+    );
 
-        processed += 1;
-        resolvedOptions.onProgress?.(processed, totalCount);
+    // Separate successful and failed results
+    results.forEach((result) => {
+      if (result.success) {
+        pending.push(result.location);
+      } else {
+        failed.push(result.failed);
       }
-    }
+    });
 
     if (persist) {
       mapContentActions.completeGeocoding({ pending, failed, error: undefined });

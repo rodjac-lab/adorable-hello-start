@@ -11,6 +11,7 @@ const Food = lazy(() => import("./pages/Food"));
 const Gallery = lazy(() => import("./pages/Gallery"));
 const Recommendations = lazy(() => import("./pages/Recommendations"));
 const Editor = lazy(() => import("./pages/Editor"));
+const Studio = lazy(() => import("./pages/Studio"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Loading component for Suspense fallbacks

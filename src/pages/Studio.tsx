@@ -1,5 +1,5 @@
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { Header } from "@/components/Header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EntryFormPanel } from "@/components/studio/EntryFormPanel";
@@ -39,23 +39,23 @@ const Studio = () => {
 
   const sortedEntries = useMemo(() => [...allEntries].sort((a, b) => a.day - b.day), [allEntries]);
 
-  const handleSelectEntry = (entry: JournalEntry) => {
+  const handleSelectEntry = useCallback((entry: JournalEntry) => {
     setMode("edit");
     setSelectedEntry(entry);
-  };
+  }, []);
 
-  const handleCreateNew = () => {
+  const handleCreateNew = useCallback(() => {
     setMode("create");
     setSelectedEntry(null);
-  };
+  }, []);
 
-  const handleEntrySaved = (data: JournalEntryFormData) => {
+  const handleEntrySaved = useCallback((data: JournalEntryFormData) => {
     const entry = formatFormDataToEntry(data);
     setSelectedEntry(entry);
     setMode("edit");
-  };
+  }, []);
 
-  const handleSubmitEntry = async (data: JournalEntryFormData) => {
+  const handleSubmitEntry = useCallback(async (data: JournalEntryFormData) => {
     if (mode === "edit" && selectedEntry) {
       const success = await editEntry(data, selectedEntry.day);
       if (success) {
@@ -69,7 +69,7 @@ const Studio = () => {
       handleEntrySaved(data);
     }
     return success;
-  };
+  }, [mode, selectedEntry, editEntry, addEntry, handleEntrySaved]);
 
   return (
     <>
