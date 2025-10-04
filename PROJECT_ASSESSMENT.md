@@ -64,3 +64,12 @@ Consolider l'architecture afin de rendre la création de contenu stable, typée 
 - Tests de persistance et hooks clés.
 - Pages publiques alimentées dynamiquement par les données du Studio.
 - Documentation de l'orchestration (README technique + guide Studio).
+
+# Journal d'avancement Phase 3
+
+## Étape 1 — Durcissement TypeScript & lint (en cours → ✅)
+- ✅ Activation de `strict`, `noImplicitAny`, `noUnusedLocals` et `noUnusedParameters` dans la configuration TypeScript.
+- ✅ Création des types partagés `PersistedJournalEntry` et `JournalEntryFormData` (`src/types/journal.ts`).
+- ✅ Mutualisation de la transformation formulaire → persistance via `toPersistedJournalEntry` (`src/lib/journalMapper.ts`).
+- ✅ Mise à jour des hooks (`useJournalEntries`) et du Studio pour éliminer les usages de `any` et centraliser le mapping.
+- 🔜 Prochaine étape : isoler la couche de persistance (`storage/localStorageClient.ts`) avant de découper `journalStorage.ts`.

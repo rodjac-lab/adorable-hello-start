@@ -1,13 +1,7 @@
-export type JournalEntry = {
-  day: number;
-  date: string;
-  title: string;
-  location: string;
-  story: string;
-  mood: string;
-  photos?: string[];
-  link?: string;
-};
+import type { PersistedJournalEntry } from "@/types/journal";
+
+export type JournalEntry = PersistedJournalEntry;
+export type { PersistedJournalEntry };
 
 const STORAGE_KEY = 'journalEntries';
 const BACKUP_KEY = 'journalEntries_backup';
