@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-  JournalEntry,
   loadJournalEntries,
   updateJournalEntry,
   addJournalEntry,
@@ -11,6 +10,8 @@ import {
   isCustomJournalDay
 } from '@/lib/contentStore';
 import type { JournalContentEntry } from '@/lib/contentStore';
+import type { JournalEntryFormData } from '@/types/journal';
+import { toPersistedJournalEntry } from '@/lib/journalMapper';
 
 // Plus de defaultEntries - tout est maintenant unifié dans le système de persistance
 
@@ -59,26 +60,11 @@ export const useJournalEntries = () => {
   }, [allEntries]);
 
   // Ajouter une nouvelle entrée
-  const addEntry = useCallback(async (formData: any): Promise<boolean> => {
+  const addEntry = useCallback(async (formData: JournalEntryFormData): Promise<boolean> => {
     console.log('➕ Adding new entry:', formData.title);
     
     try {
-      const newEntry: JournalEntry = {
-        day: formData.day,
-        date: formData.date.toLocaleDateString('fr-FR', { 
-          day: 'numeric', 
-          month: 'long', 
-          year: 'numeric' 
-        }),
-        title: formData.title,
-        location: formData.location,
-        story: formData.story,
-        mood: formData.mood,
-        photos: formData.photos || [],
-        link: formData.link || undefined,
-      };
-
-      const success = await addJournalEntry(newEntry);
+      const success = await addJournalEntry(toPersistedJournalEntry(formData));
 
       if (success) {
         // Recharger toutes les données depuis le localStorage
@@ -95,29 +81,14 @@ export const useJournalEntries = () => {
       setError('Erreur lors de l\'ajout de l\'entrée');
       return false;
     }
-  }, []);
+  }, [loadEntriesFromStorage]);
 
   // Modifier une entrée existante
-  const editEntry = useCallback(async (formData: any, originalDay: number): Promise<boolean> => {
+  const editEntry = useCallback(async (formData: JournalEntryFormData, originalDay: number): Promise<boolean> => {
     console.log('✏️ Editing entry for day:', originalDay, 'new title:', formData.title);
     
     try {
-      const updatedEntry: JournalEntry = {
-        day: formData.day,
-        date: formData.date.toLocaleDateString('fr-FR', { 
-          day: 'numeric', 
-          month: 'long', 
-          year: 'numeric' 
-        }),
-        title: formData.title,
-        location: formData.location,
-        story: formData.story,
-        mood: formData.mood,
-        photos: formData.photos || [],
-        link: formData.link || undefined,
-      };
-
-      const success = await updateJournalEntry(updatedEntry);
+      const success = await updateJournalEntry(toPersistedJournalEntry(formData));
 
       // Toujours recharger les données et retourner true pour fermer le formulaire
       loadEntriesFromStorage();
