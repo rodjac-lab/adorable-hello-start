@@ -5,6 +5,11 @@ import type {
   FoodExperience as StoreFoodExperience,
   ReadingRecommendation as StoreReadingRecommendation
 } from '@/store/contentStore';
+import {
+  JOURNAL_STORAGE_KEY,
+  JOURNAL_STORAGE_VERSION,
+  JOURNAL_VERSION_KEY,
+} from '@/lib/journal/constants';
 
 export type ContentSource = 'canonical' | 'custom';
 
@@ -43,10 +48,7 @@ export interface ReadingRecommendation {
   source: ContentSource;
 }
 
-const JOURNAL_STORAGE_KEY = 'journalEntries';
-const VERSION_KEY = 'journalStorage_version';
 const SOURCE_STATE_KEY = 'contentStore_sources';
-const CURRENT_VERSION = '3.0';
 
 interface SourceState {
   journal: Record<number, ContentSource>;
@@ -264,7 +266,7 @@ export const initializeContentStore = () => {
     if (!existing || existing === '[]') {
       const entriesToSave = canonicalJournalEntries.map(stripSource);
       localStorage.setItem(JOURNAL_STORAGE_KEY, JSON.stringify(entriesToSave));
-      localStorage.setItem(VERSION_KEY, CURRENT_VERSION);
+      localStorage.setItem(JOURNAL_VERSION_KEY, JOURNAL_STORAGE_VERSION);
       saveSourceState({
         journal: canonicalJournalEntries.reduce<Record<number, ContentSource>>((map, entry) => {
           map[entry.day] = 'canonical';
@@ -278,8 +280,8 @@ export const initializeContentStore = () => {
     const parsed: JournalEntry[] = JSON.parse(existing);
     syncJournalSources(parsed);
 
-    if (!localStorage.getItem(VERSION_KEY)) {
-      localStorage.setItem(VERSION_KEY, CURRENT_VERSION);
+    if (!localStorage.getItem(JOURNAL_VERSION_KEY)) {
+      localStorage.setItem(JOURNAL_VERSION_KEY, JOURNAL_STORAGE_VERSION);
     }
   } catch (error) {
     console.error('❌ Erreur lors de l\'initialisation du contentStore:', error);

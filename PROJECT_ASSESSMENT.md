@@ -72,4 +72,11 @@ Consolider l'architecture afin de rendre la création de contenu stable, typée 
 - ✅ Création des types partagés `PersistedJournalEntry` et `JournalEntryFormData` (`src/types/journal.ts`).
 - ✅ Mutualisation de la transformation formulaire → persistance via `toPersistedJournalEntry` (`src/lib/journalMapper.ts`).
 - ✅ Mise à jour des hooks (`useJournalEntries`) et du Studio pour éliminer les usages de `any` et centraliser le mapping.
-- 🔜 Prochaine étape : isoler la couche de persistance (`storage/localStorageClient.ts`) avant de découper `journalStorage.ts`.
+- ✅ Étape clôturée : la couche de persistance est maintenant isolée (cf. Étape 2).
+
+## Étape 2 — Isolation de la couche de persistance (en cours → ✅)
+- ✅ Extraction d'un client `localStorage` typé (`src/storage/localStorageClient.ts`) gérant backups, versioning et erreurs de quota.
+- ✅ Découpage de `journalStorage` en modules dédiés (`src/lib/journal/photoProcessing.ts`, `src/lib/journal/journalMigrations.ts`, `src/lib/journal/journalRepository.ts`).
+- ✅ Introduction d'une interface générique `ContentRepository` (`src/repositories/ContentRepository.ts`) et d'un repository journal réutilisable.
+- ✅ Refonte des diagnostics (export/import, reset, migration forcée) pour s'appuyer sur le repository et le client de persistance.
+- 🔜 Prochaine étape : factoriser l'éditeur (`Editor.tsx` → conteneur + sous-composants) et mutualiser la logique d'édition.
