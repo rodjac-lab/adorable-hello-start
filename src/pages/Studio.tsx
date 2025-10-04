@@ -10,26 +10,12 @@ import { MapEditor } from "@/components/studio/MapEditor";
 import { MediaManager } from "@/components/studio/MediaManager";
 import { useJournalEntries } from "@/hooks/useJournalEntries";
 import { JournalEntry } from "@/lib/journalStorage";
-import { JournalEntryFormData } from "@/components/AddJournalEntryForm";
+import type { JournalEntryFormData } from "@/types/journal";
+import { toPersistedJournalEntry } from "@/lib/journalMapper";
 import { JournalDiagnostic } from "@/components/JournalDiagnostic";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { RotateCw, NotebookPen, Map as MapIcon, UtensilsCrossed, BookOpen, Images, Activity } from "lucide-react";
-
-const formatFormDataToEntry = (data: JournalEntryFormData): JournalEntry => ({
-  day: data.day,
-  date: data.date.toLocaleDateString("fr-FR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }),
-  title: data.title,
-  location: data.location,
-  story: data.story,
-  mood: data.mood,
-  photos: data.photos || [],
-  link: data.link || undefined,
-});
 
 const Studio = () => {
   const [mode, setMode] = useState<"create" | "edit">("create");
@@ -50,7 +36,7 @@ const Studio = () => {
   }, []);
 
   const handleEntrySaved = useCallback((data: JournalEntryFormData) => {
-    const entry = formatFormDataToEntry(data);
+    const entry = toPersistedJournalEntry(data);
     setSelectedEntry(entry);
     setMode("edit");
   }, []);
