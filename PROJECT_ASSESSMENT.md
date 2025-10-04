@@ -79,4 +79,11 @@ Consolider l'architecture afin de rendre la création de contenu stable, typée 
 - ✅ Découpage de `journalStorage` en modules dédiés (`src/lib/journal/photoProcessing.ts`, `src/lib/journal/journalMigrations.ts`, `src/lib/journal/journalRepository.ts`).
 - ✅ Introduction d'une interface générique `ContentRepository` (`src/repositories/ContentRepository.ts`) et d'un repository journal réutilisable.
 - ✅ Refonte des diagnostics (export/import, reset, migration forcée) pour s'appuyer sur le repository et le client de persistance.
-- 🔜 Prochaine étape : factoriser l'éditeur (`Editor.tsx` → conteneur + sous-composants) et mutualiser la logique d'édition.
+- ✅ Étape clôturée : la prochaine itération se concentre sur la factorisation de l'éditeur (cf. Étape 3).
+
+## Étape 3 — Factorisation de l'éditeur (en cours)
+- ✅ `Editor.tsx` est devenu un point d'entrée minimal qui délègue à `features/editor/EditorPage`.
+- ✅ Création de composants mutualisés (`GenericListEditor`, `EntryForm`) et du hook `useEditableCollection<T>` pour orchestrer les opérations CRUD.
+- ✅ Les sections Journal/Gastronomie/Lectures consomment désormais le hook partagé avec validations typées et formulaires modulaires.
+- ✅ Le chargement initial exploite les jeux de données canoniques (`src/data`) avec fallback localStorage et export TypeScript factorisé.
+- 🔜 Harmoniser l'UX (feedback utilisateur, toasts) et préparer l'extraction du workflow de publication Studio.
