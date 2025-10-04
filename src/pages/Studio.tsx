@@ -161,7 +161,6 @@ const Studio = () => {
                 {isLoading && <span className="text-sm text-muted-foreground">Actualisation en cours...</span>}
               </div>
               <JournalDiagnostic />
- main
             </TabsContent>
           </Tabs>
         </div>

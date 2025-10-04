@@ -24,11 +24,15 @@ const LoadingPage = () => (
   </div>
 );
 
-const App = () => (
-  <TooltipProvider>
-    <Toaster />
-    <Sonner />
-    <BrowserRouter basename="/adorable-hello-start/">
+const App = () => {
+  // Use basename only in production (GitHub Pages), not in dev
+  const basename = import.meta.env.PROD ? "/adorable-hello-start/" : "/";
+
+  return (
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter basename={basename}>
       <Suspense fallback={<LoadingPage />}>
         <Routes>
           <Route path="/" element={<Index />} />
@@ -37,11 +41,13 @@ const App = () => (
           <Route path="/gallery" element={<Gallery />} />
           <Route path="/recommendations" element={<Recommendations />} />
           <Route path="/editor" element={<Editor />} />
+          <Route path="/studio" element={<Studio />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
     </BrowserRouter>
   </TooltipProvider>
-);
+  );
+};
 
 export default App;

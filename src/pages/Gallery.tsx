@@ -31,9 +31,21 @@ const Gallery = () => {
         </div>
 
         <div className="container mx-auto px-4 py-16">
+          <div className="max-w-2xl mx-auto text-center space-y-4 p-8 bg-amber-100 dark:bg-amber-900 rounded-lg">
+            <h2 className="text-2xl font-bold">🗺️ Carte Interactive</h2>
+            <p className="text-muted-foreground">
+              La carte interactive nécessite un token Mapbox valide.
+              Elle sera réactivée en Phase 3 avec une configuration complète.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              En attendant, consultez les pages <strong>Journal</strong>, <strong>Gastronomie</strong> et <strong>Lectures</strong> pour découvrir le voyage !
+            </p>
+          </div>
+          {/* Temporairement désactivé - Token Mapbox invalide
           <Suspense fallback={<MapLoading />}>
             <SimpleMap />
           </Suspense>
+          */}
         </div>
       </div>
     </>

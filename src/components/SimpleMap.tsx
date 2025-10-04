@@ -28,14 +28,21 @@ const SimpleMap = () => {
     if (!mapContainer.current || map.current) return;
 
     // Initialize map
+    console.log('🗺️ Mapbox Token:', MAPBOX_TOKEN ? 'Present' : 'MISSING');
     mapboxgl.accessToken = MAPBOX_TOKEN;
 
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/light-v11',
-      center: [35.9106, 31.9539], // Centered on Amman
-      zoom: 7
-    });
+    try {
+      map.current = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: 'mapbox://styles/mapbox/light-v11',
+        center: [35.9106, 31.9539], // Centered on Amman
+        zoom: 7
+      });
+      console.log('✅ Map initialized successfully');
+    } catch (error) {
+      console.error('❌ Map initialization error:', error);
+      return;
+    }
 
     // Add navigation controls
     map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');

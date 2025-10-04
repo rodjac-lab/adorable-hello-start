@@ -2,12 +2,14 @@ import { useState, memo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Header } from "@/components/Header";
-import { getJournalEntries, JournalEntry } from "@/data/journalEntries";
+import { JournalEntry } from "@/data/journalEntries";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { X } from "lucide-react";
+import { useJournalEntries } from "@/hooks/useJournalEntries";
 
 const Journal = () => {
-  const entries = getJournalEntries();
+  const { allEntries } = useJournalEntries();
+  const entries = allEntries;
 
   return (
     <>

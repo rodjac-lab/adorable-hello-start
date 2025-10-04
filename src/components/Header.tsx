@@ -8,7 +8,7 @@ const navigation = [
   { name: "Gastronomie", to: "/food", icon: Utensils },
   { name: "Carte Interactive", to: "/gallery", icon: Map },
   { name: "Lectures", to: "/recommendations", icon: BookOpenCheck },
-  { name: "Éditeur", to: "/editor", icon: Edit3 },
+  { name: "Studio", to: "/studio", icon: Edit3 },
 ];
 
 const HeaderComponent = () => {
