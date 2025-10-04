@@ -1,8 +1,9 @@
 import { useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { AddJournalEntryFormProps, JournalEntryForm, JournalEntryFormData, JournalEntryPreview, useJournalEntryForm } from "@/components/AddJournalEntryForm";
+import { AddJournalEntryFormProps, JournalEntryForm, JournalEntryPreview, useJournalEntryForm } from "@/components/AddJournalEntryForm";
 import { JournalEntry } from "@/lib/journalStorage";
 import { toast } from "sonner";
+import type { JournalEntryFormData } from "@/types/journal";
 
 interface EntryFormPanelProps {
   mode: "create" | "edit";

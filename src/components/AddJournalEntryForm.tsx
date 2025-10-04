@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm, UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import type { JournalEntryFormData, PersistedJournalEntry } from "@/types/journal";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { CalendarIcon, Plus, X } from "lucide-react";
@@ -56,7 +57,7 @@ const parseFrenchDate = (dateString: string): Date | undefined => {
 };
 
 // Define the schema for form validation
-const journalEntrySchema = z.object({
+const journalEntrySchema: z.ZodType<JournalEntryFormData> = z.object({
   day: z.number().min(1, "Le jour doit être au moins 1"),
   date: z.date({
     required_error: "La date est requise",
@@ -69,21 +70,10 @@ const journalEntrySchema = z.object({
   photos: z.array(z.string()).optional(),
 });
 
-export type JournalEntryFormData = z.infer<typeof journalEntrySchema>;
-
 export interface AddJournalEntryFormProps {
   onSubmit: (entry: JournalEntryFormData) => Promise<boolean | void> | boolean | void;
   onCancel: () => void;
-  editEntry?: {
-    day: number;
-    date: string;
-    title: string;
-    location: string;
-    story: string;
-    mood: string;
-    photos?: string[];
-    link?: string;
-  };
+  editEntry?: PersistedJournalEntry;
 }
 
 const MOOD_OPTIONS = [
