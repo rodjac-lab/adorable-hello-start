@@ -1,20 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import assert from 'node:assert/strict';
+import { afterEach, beforeEach, describe, it } from 'node:test';
 
-import { createJsonLocalStorageClient } from '../localStorageClient';
-
-const loggerErrorMock = vi.fn();
-const loggerWarnMock = vi.fn();
-const loggerInfoMock = vi.fn();
-const loggerDebugMock = vi.fn();
-
-vi.mock('@/lib/logger', () => ({
-  logger: {
-    error: loggerErrorMock,
-    warn: loggerWarnMock,
-    info: loggerInfoMock,
-    debug: loggerDebugMock,
-  },
-}));
+import { createJsonLocalStorageClient } from '../localStorageClient.ts';
+import type { JsonLocalStorageClientOptions } from '../localStorageClient.ts';
+import { createMockFn } from '../../../test/utils/mockFn.ts';
 
 const config = {
   storageKey: 'journal',
@@ -56,78 +45,120 @@ const createFakeStorage = (): MutableStorage => {
   } as MutableStorage;
 };
 
-const setFailingStorage = (error: Error) => {
-  const failingStorage: MutableStorage = {
-    ...createFakeStorage(),
-    setItem: () => {
-      throw error;
-    },
-  };
-  vi.stubGlobal('localStorage', failingStorage);
+const createLoggerMocks = () => {
+  const error = createMockFn<[string, unknown?], void>();
+  const warn = createMockFn<[string, unknown?], void>();
+  const info = createMockFn<[string, unknown?], void>();
+  const debug = createMockFn<[string, unknown?], void>();
+
+  return { error, warn, info, debug };
 };
 
-beforeEach(() => {
-  vi.clearAllMocks();
-  vi.stubGlobal('localStorage', createFakeStorage());
-});
+const createOptions = (overrides?: Partial<JsonLocalStorageClientOptions>) => {
+  const storage = createFakeStorage();
+  const logger = createLoggerMocks();
 
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
+  return {
+    storage,
+    logger,
+    ...overrides,
+  } satisfies JsonLocalStorageClientOptions & {
+    storage: MutableStorage;
+    logger: ReturnType<typeof createLoggerMocks>;
+  };
+};
 
 describe('createJsonLocalStorageClient', () => {
+  let options: ReturnType<typeof createOptions>;
+
+  beforeEach(() => {
+    options = createOptions();
+  });
+
+  afterEach(() => {
+    options.logger.error.mockClear();
+    options.logger.warn.mockClear();
+    options.logger.info.mockClear();
+    options.logger.debug.mockClear();
+  });
+
   it('persists the value and bumps the storage version on write', () => {
-    const client = createJsonLocalStorageClient<string[]>(config);
+    const client = createJsonLocalStorageClient<string[]>(config, options);
 
     const result = client.write(['one', 'two']);
 
-    expect(result).toMatchObject({ success: true, quotaExceeded: false });
-    expect(globalThis.localStorage.getItem(config.storageKey)).toBe(JSON.stringify(['one', 'two']));
-    expect(globalThis.localStorage.getItem(config.versionKey)).toBe(config.currentVersion);
+    assert.strictEqual(result.success, true);
+    assert.strictEqual(result.quotaExceeded, false);
+    assert.ok(result.bytes > 0);
+    assert.strictEqual(options.storage.getItem(config.storageKey), JSON.stringify(['one', 'two']));
+    assert.strictEqual(options.storage.getItem(config.versionKey), config.currentVersion);
   });
 
   it('rotates backups when the persisted payload changes', () => {
-    const client = createJsonLocalStorageClient<string[]>(config);
+    const client = createJsonLocalStorageClient<string[]>(config, options);
 
     client.write(['initial']);
     client.write(['updated']);
     client.write(['latest']);
 
-    expect(globalThis.localStorage.getItem(config.storageKey)).toBe(JSON.stringify(['latest']));
-    expect(globalThis.localStorage.getItem(config.backupKeys.primary)).toBe(JSON.stringify(['updated']));
-    expect(globalThis.localStorage.getItem(config.backupKeys.secondary)).toBe(JSON.stringify(['initial']));
+    assert.strictEqual(options.storage.getItem(config.storageKey), JSON.stringify(['latest']));
+    assert.strictEqual(options.storage.getItem(config.backupKeys.primary), JSON.stringify(['updated']));
+    assert.strictEqual(options.storage.getItem(config.backupKeys.secondary), JSON.stringify(['initial']));
   });
 
   it('restores and parses entries from the selected backup slot', () => {
-    const client = createJsonLocalStorageClient<string[]>(config);
+    const client = createJsonLocalStorageClient<string[]>(config, options);
 
-    globalThis.localStorage.setItem(config.storageKey, JSON.stringify(['current']));
-    globalThis.localStorage.setItem(config.backupKeys.primary, JSON.stringify(['primary-backup']));
+    options.storage.setItem(config.storageKey, JSON.stringify(['current']));
+    options.storage.setItem(config.backupKeys.primary, JSON.stringify(['primary-backup']));
 
     const restored = client.restoreFromBackup('primary');
 
-    expect(restored).toEqual(['primary-backup']);
-    expect(globalThis.localStorage.getItem(config.storageKey)).toBe(JSON.stringify(['primary-backup']));
+    assert.deepEqual(restored, ['primary-backup']);
+    assert.strictEqual(options.storage.getItem(config.storageKey), JSON.stringify(['primary-backup']));
   });
 
   it('logs and returns null when parsing stored data fails', () => {
-    const client = createJsonLocalStorageClient<string[]>(config);
-    globalThis.localStorage.setItem(config.storageKey, '{invalid-json');
+    const client = createJsonLocalStorageClient<string[]>(config, options);
+    options.storage.setItem(config.storageKey, '{invalid-json');
 
     const result = client.read();
 
-    expect(result).toBeNull();
-    expect(loggerErrorMock).toHaveBeenCalledWith('❌ Échec du parsing des données stockées', expect.any(Error));
+    assert.strictEqual(result, null);
+    assert.strictEqual(options.logger.error.calls.length, 1);
+    const [message] = options.logger.error.calls[0] ?? [];
+    assert.ok(typeof message === 'string' && message.includes('Échec du parsing'));
   });
 
   it('propagates storage errors when setItem throws', () => {
     const quotaError = new Error('Quota exceeded');
-    setFailingStorage(quotaError);
-    const client = createJsonLocalStorageClient<string[]>(config);
+    const failingStorage: MutableStorage = {
+      ...createFakeStorage(),
+      setItem: () => {
+        throw quotaError;
+      },
+    } as MutableStorage;
+
+    const client = createJsonLocalStorageClient<string[]>(config, {
+      ...options,
+      storage: failingStorage,
+    });
 
     const result = client.write(['value']);
 
-    expect(result.success).toBe(false);
-    expect(result.error).toEqual(quotaError);
+    assert.strictEqual(result.success, false);
+    assert.strictEqual(result.error, quotaError);
+  });
+
+  it('fails gracefully when localStorage is unavailable', () => {
+    const client = createJsonLocalStorageClient<string[]>(config, {
+      logger: options.logger,
+    });
+
+    const result = client.write(['value']);
+
+    assert.strictEqual(result.success, false);
+    assert.strictEqual(result.error?.message, 'localStorage is unavailable');
+    assert.strictEqual(client.read(), null);
   });
 });

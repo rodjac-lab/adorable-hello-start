@@ -38,7 +38,7 @@ Consolider l'architecture afin de rendre la création de contenu stable, typée 
    - Unifier la structure `FoodExperience`/`ReadingRecommendation` pour éviter duplication entre `lib` et `store`.
 5. **Instrumentation & tests légers**
    - Remplacer les `console.log` restants par le logger central. 【F:src/hooks/useJournalEntries.ts†L19-L50】
-   - Ajouter des tests unitaires ciblés (ex: migrations, repository) avec Vitest + React Testing Library.
+   - Ajouter des tests unitaires ciblés (ex: migrations, repository) avec le runner Node.js (`node --test`).
    - Mettre en place un script npm `npm run lint && npm run typecheck && npm run test` en CI.
 
 # Plan pour finaliser le site et le Studio
@@ -104,14 +104,14 @@ Consolider l'architecture afin de rendre la création de contenu stable, typée 
 ## Étape 5 — Instrumentation & tests légers (en cours)
 - ✅ Remplacement des journaux `console.*` par le logger centralisé dans les hooks et services critiques (journal, persistance, édition, media, cartes).
 - ✅ Ajout de la journalisation détaillée des opérations de géocodage et de compression pour faciliter le diagnostic.
-- ✅ Couverture Vitest sur les modules critiques (`publicationState`, client `localStorage`, `journalRepository`) et scripts `test`/`ci` prêts pour la CI.
-- ⚠️ Exécution CI bloquée tant que `npm install` ne peut pas récupérer `vitest` (erreur 403 registre) ; compléter les tests `mediaStore`/repositories supplémentaires une fois l'accès rétabli.
+- ✅ Couverture de tests unitaires sur les modules critiques (`publicationState`, client `localStorage`, `journalRepository`) et scripts `test`/`ci` prêts pour la CI via le loader TypeScript `node --test`.
+- ✅ Exécution CI rétablie sans dépendance au registre npm grâce au loader TypeScript local (`scripts/ts-test-loader.mjs`) et à la suite `npm run test`.
 
 ## Finalisation Studio/Site — Gestion média (en cours)
 - ✅ Module `mediaStore` basé sur le client `localStorage` : backups, quotas, seeds par défaut et API de mise à jour.
 - ✅ Nouveau `MediaManager` unifié : import compressé, édition, recompression, indicateurs de quota et toasts.
 - ✅ Hook `useMediaLibrary` pour orchestrer les opérations Studio et surface d'erreurs cohérente.
-- ✅ Tests Vitest pour la persistance média (ordre, normalisation, helpers de taille).
+- ✅ Tests unitaires pour la persistance média (ordre, normalisation, helpers de taille) exécutés via `node --test`.
 - ✅ Journal et éditeur reliés à la médiathèque : sélection des images dans le Studio, stockage des `mediaAssetIds` et résolution automatique côté site public.
 - ✅ Tableau de bord d'usage dans l'onglet Médiathèque pour suivre les médias référencés et détecter les visuels orphelins.
 - ✅ Association des lieux de la carte aux médias de la bibliothèque, synchronisée avec les statuts de publication et intégrée aux diagnostics d'usage.

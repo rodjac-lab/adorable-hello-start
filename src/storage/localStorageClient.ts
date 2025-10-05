@@ -58,11 +58,28 @@ const toError = (error: unknown): Error => {
   return new Error(String(error));
 };
 
+export interface JsonLocalStorageClientOptions {
+  storage?: Storage;
+  logger?: Pick<typeof logger, 'error' | 'warn' | 'info' | 'debug'>;
+}
+
 export const createJsonLocalStorageClient = <TValue>(
   config: LocalStorageClientConfig,
+  options?: JsonLocalStorageClientOptions,
 ): JsonLocalStorageClient<TValue> => {
+  const activeLogger = options?.logger ?? logger;
+  const activeStorage =
+    options?.storage ??
+    (typeof globalThis !== 'undefined' && 'localStorage' in globalThis
+      ? (globalThis.localStorage as Storage)
+      : undefined);
+
   const rotateBackupsIfChanged = (payload: string) => {
-    const existing = localStorage.getItem(config.storageKey);
+    if (!activeStorage) {
+      return;
+    }
+
+    const existing = activeStorage.getItem(config.storageKey);
     if (!existing) {
       return;
     }
@@ -71,18 +88,27 @@ export const createJsonLocalStorageClient = <TValue>(
       return;
     }
 
-    const previousBackup = localStorage.getItem(config.backupKeys.primary);
+    const previousBackup = activeStorage.getItem(config.backupKeys.primary);
     if (previousBackup) {
-      localStorage.setItem(config.backupKeys.secondary, previousBackup);
+      activeStorage.setItem(config.backupKeys.secondary, previousBackup);
     }
-    localStorage.setItem(config.backupKeys.primary, existing);
+    activeStorage.setItem(config.backupKeys.primary, existing);
   };
 
   const writeRaw = (payload: string): StorageWriteResult => {
+    if (!activeStorage) {
+      return {
+        success: false,
+        bytes: payload.length,
+        quotaExceeded: false,
+        error: new Error('localStorage is unavailable'),
+      };
+    }
+
     try {
       rotateBackupsIfChanged(payload);
-      localStorage.setItem(config.storageKey, payload);
-      localStorage.setItem(config.versionKey, config.currentVersion);
+      activeStorage.setItem(config.storageKey, payload);
+      activeStorage.setItem(config.versionKey, config.currentVersion);
       return { success: true, bytes: payload.length, quotaExceeded: false };
     } catch (error) {
       return {
@@ -95,7 +121,11 @@ export const createJsonLocalStorageClient = <TValue>(
   };
 
   const readRaw = (): string | null => {
-    return localStorage.getItem(config.storageKey);
+    if (!activeStorage) {
+      return null;
+    }
+
+    return activeStorage.getItem(config.storageKey);
   };
 
   const read = (): TValue | null => {
@@ -107,7 +137,7 @@ export const createJsonLocalStorageClient = <TValue>(
     try {
       return JSON.parse(raw) as TValue;
     } catch (error) {
-      logger.error('❌ Échec du parsing des données stockées', error);
+      activeLogger.error('❌ Échec du parsing des données stockées', error);
       return null;
     }
   };
@@ -119,7 +149,11 @@ export const createJsonLocalStorageClient = <TValue>(
 
   const getBackup = (slot: 'primary' | 'secondary'): string | null => {
     const key = slot === 'primary' ? config.backupKeys.primary : config.backupKeys.secondary;
-    return localStorage.getItem(key);
+    if (!activeStorage) {
+      return null;
+    }
+
+    return activeStorage.getItem(key);
   };
 
   const restoreFromBackup = (slot: 'primary' | 'secondary'): TValue | null => {
@@ -136,7 +170,7 @@ export const createJsonLocalStorageClient = <TValue>(
     try {
       return JSON.parse(backup) as TValue;
     } catch (error) {
-      logger.error('❌ Échec du parsing des données de sauvegarde', error);
+      activeLogger.error('❌ Échec du parsing des données de sauvegarde', error);
       return null;
     }
   };
@@ -145,26 +179,42 @@ export const createJsonLocalStorageClient = <TValue>(
     main: readRaw(),
     backup1: getBackup('primary'),
     backup2: getBackup('secondary'),
-    version: localStorage.getItem(config.versionKey),
+    version: activeStorage ? activeStorage.getItem(config.versionKey) : null,
   });
 
   const clear = () => {
-    localStorage.removeItem(config.storageKey);
-    localStorage.removeItem(config.backupKeys.primary);
-    localStorage.removeItem(config.backupKeys.secondary);
-    localStorage.removeItem(config.versionKey);
+    if (!activeStorage) {
+      return;
+    }
+
+    activeStorage.removeItem(config.storageKey);
+    activeStorage.removeItem(config.backupKeys.primary);
+    activeStorage.removeItem(config.backupKeys.secondary);
+    activeStorage.removeItem(config.versionKey);
   };
 
   const getVersion = (): string | null => {
-    return localStorage.getItem(config.versionKey);
+    if (!activeStorage) {
+      return null;
+    }
+
+    return activeStorage.getItem(config.versionKey);
   };
 
   const setVersion = (version: string) => {
-    localStorage.setItem(config.versionKey, version);
+    if (!activeStorage) {
+      return;
+    }
+
+    activeStorage.setItem(config.versionKey, version);
   };
 
   const clearVersion = () => {
-    localStorage.removeItem(config.versionKey);
+    if (!activeStorage) {
+      return;
+    }
+
+    activeStorage.removeItem(config.versionKey);
   };
 
   return {

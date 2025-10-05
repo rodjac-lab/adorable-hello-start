@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import assert from 'node:assert/strict';
+import { describe, it } from 'node:test';
+
 import {
   countPublicationByStatus,
   ensurePublicationEntries,
@@ -6,7 +8,7 @@ import {
   removePublicationEntry,
   resolvePublicationStatus,
   updatePublicationStatus,
-} from '../publicationState';
+} from '../publicationState.ts';
 
 const baseState = () => ({
   journal: {},
@@ -22,39 +24,46 @@ describe('publicationState', () => {
 
     const result = ensurePublicationEntries(initial, 'journal', ['1', '3'], canonicalIds);
 
-    expect(result.journal['1']?.status).toBe('published');
-    expect(result.journal['3']?.status).toBe('draft');
+    assert.strictEqual(result.journal['1']?.status, 'published');
+    assert.strictEqual(result.journal['3']?.status, 'draft');
   });
 
   it('updates the status of an entry', () => {
     const initial = ensurePublicationEntries(baseState(), 'food', ['falafel'], new Set());
 
     const result = updatePublicationStatus(initial, 'food', 'falafel', 'published');
-    expect(result.food.falafel?.status).toBe('published');
-    expect(result.food.falafel?.updatedAt).toBeDefined();
+    assert.strictEqual(result.food.falafel?.status, 'published');
+    assert.ok(result.food.falafel?.updatedAt);
   });
 
   it('removes an entry cleanly', () => {
     const initial = ensurePublicationEntries(baseState(), 'books', ['id'], new Set());
     const result = removePublicationEntry(initial, 'books', 'id');
-    expect(result.books['id']).toBeUndefined();
+    assert.strictEqual(result.books['id'], undefined);
   });
 
   it('resolves status with fallback when entry not tracked', () => {
     const state = baseState();
-    expect(resolvePublicationStatus(state, 'journal', '42', { defaultStatus: 'draft' })).toBe('draft');
+    const status = resolvePublicationStatus(state, 'journal', '42', { defaultStatus: 'draft' });
+    assert.strictEqual(status, 'draft');
   });
 
   it('counts entries by status', () => {
     const initial = ensurePublicationEntries(baseState(), 'journal', ['1', '2'], new Set(['1']));
     const updated = updatePublicationStatus(initial, 'journal', '2', 'published');
 
-    const publishedCount = countPublicationByStatus(updated, 'journal', 'published', ['1', '2'], { defaultStatus: 'draft' });
-    expect(publishedCount).toBe(2);
+    const publishedCount = countPublicationByStatus(
+      updated,
+      'journal',
+      'published',
+      ['1', '2'],
+      { defaultStatus: 'draft' },
+    );
+    assert.strictEqual(publishedCount, 2);
   });
 
   it('loads a default state safely when localStorage is unavailable', () => {
     const state = loadPublicationState();
-    expect(state).toMatchObject({ journal: {}, food: {}, books: {}, map: {} });
+    assert.deepEqual(state, { journal: {}, food: {}, books: {}, map: {} });
   });
 });

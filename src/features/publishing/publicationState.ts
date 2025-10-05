@@ -15,7 +15,13 @@ export interface PublicationState {
   map: Record<string, PublicationMetadata>;
 }
 
-const isBrowser = typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+const detectBrowser = (override?: boolean): boolean => {
+  if (typeof override === "boolean") {
+    return override;
+  }
+
+  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+};
 
 const STORAGE_KEY = "content-publication-state.v1";
 
@@ -76,13 +82,23 @@ const normalizeCollection = (value: unknown): Record<string, PublicationMetadata
   }, {});
 };
 
-export const loadPublicationState = (): PublicationState => {
-  if (!isBrowser) {
+interface PublicationStateEnvironment {
+  storage?: Storage;
+  logger?: typeof logger;
+  isBrowser?: boolean;
+}
+
+export const loadPublicationState = (
+  environment?: PublicationStateEnvironment,
+): PublicationState => {
+  const browser = detectBrowser(environment?.isBrowser);
+  if (!browser) {
     return createDefaultState();
   }
 
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const storage = environment?.storage ?? window.localStorage;
+    const raw = storage.getItem(STORAGE_KEY);
     if (!raw) {
       return createDefaultState();
     }
@@ -95,20 +111,31 @@ export const loadPublicationState = (): PublicationState => {
       map: normalizeCollection(parsed.map),
     };
   } catch (error) {
-    logger.warn("⚠️ Impossible de lire l'état de publication", error);
+    (environment?.logger ?? logger).warn(
+      "⚠️ Impossible de lire l'état de publication",
+      error,
+    );
     return createDefaultState();
   }
 };
 
-export const savePublicationState = (state: PublicationState): void => {
-  if (!isBrowser) {
+export const savePublicationState = (
+  state: PublicationState,
+  environment?: PublicationStateEnvironment,
+): void => {
+  const browser = detectBrowser(environment?.isBrowser);
+  if (!browser) {
     return;
   }
 
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    const storage = environment?.storage ?? window.localStorage;
+    storage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch (error) {
-    logger.error("❌ Impossible d'enregistrer l'état de publication", error);
+    (environment?.logger ?? logger).error(
+      "❌ Impossible d'enregistrer l'état de publication",
+      error,
+    );
   }
 };
 

@@ -1,85 +1,19 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import assert from 'node:assert/strict';
+import { beforeEach, describe, it } from 'node:test';
 
-import type { PersistedJournalEntry } from '@/types/journal';
-
-const writeMock = vi.fn();
-const readRawMock = vi.fn();
-const snapshotMock = vi.fn();
-const restoreFromBackupMock = vi.fn();
-const getBackupMock = vi.fn();
-const clearMock = vi.fn();
-const getVersionMock = vi.fn();
-const setVersionMock = vi.fn();
-const clearVersionMock = vi.fn();
-const readMock = vi.fn();
-
-const storageClientMock = {
-  read: readMock,
-  readRaw: readRawMock,
-  write: writeMock,
-  writeRaw: vi.fn(),
-  getBackup: getBackupMock,
-  restoreFromBackup: restoreFromBackupMock,
-  snapshot: snapshotMock,
-  clear: clearMock,
-  getVersion: getVersionMock,
-  setVersion: setVersionMock,
-  clearVersion: clearVersionMock,
-};
-
-const createJsonLocalStorageClientMock = vi.fn(() => storageClientMock);
-
-const normalizePhotosForPersistenceMock = vi.fn();
-const bootstrapJournalStorageMock = vi.fn();
-const ensureStorageVersionMock = vi.fn();
-const recoverEntriesFromBackupsMock = vi.fn();
-const registerImportedEntriesMock = vi.fn();
-const resetJournalStorageMock = vi.fn();
-const validatePersistedEntriesMock = vi.fn();
-const syncJournalSourcesMock = vi.fn();
-const markJournalDayAsCustomMock = vi.fn();
-const loggerErrorMock = vi.fn();
-const loggerWarnMock = vi.fn();
-const loggerInfoMock = vi.fn();
-const loggerDebugMock = vi.fn();
-
-vi.mock('@/storage/localStorageClient', () => ({
-  createJsonLocalStorageClient: createJsonLocalStorageClientMock,
-}));
-
-vi.mock('../photoProcessing', () => ({
-  normalizePhotosForPersistence: normalizePhotosForPersistenceMock,
-}));
-
-vi.mock('../journalMigrations', () => ({
-  bootstrapJournalStorage: bootstrapJournalStorageMock,
-  ensureStorageVersion: ensureStorageVersionMock,
-  recoverEntriesFromBackups: recoverEntriesFromBackupsMock,
-  registerImportedEntries: registerImportedEntriesMock,
-  resetJournalStorage: resetJournalStorageMock,
-  validatePersistedEntries: validatePersistedEntriesMock,
-}));
-
-vi.mock('@/lib/contentStore', () => ({
-  syncJournalSources: syncJournalSourcesMock,
-  markJournalDayAsCustom: markJournalDayAsCustomMock,
-}));
-
-vi.mock('@/lib/logger', () => ({
-  logger: {
-    error: loggerErrorMock,
-    warn: loggerWarnMock,
-    info: loggerInfoMock,
-    debug: loggerDebugMock,
-  },
-}));
-
-// Import after mocks so the repository picks up the stubbed dependencies.
 import {
-  addJournalEntry,
-  loadJournalEntries,
-  saveJournalEntries,
-} from '../journalRepository';
+  createJournalRepository,
+  type JournalRepositoryDependencies,
+} from '../journalRepository.ts';
+import type { PersistedJournalEntry } from '../../../types/journal.ts';
+import type {
+  JsonLocalStorageClient,
+  StorageSnapshot,
+  StorageWriteResult,
+} from '../../../storage/localStorageClient.ts';
+import { createMockFn } from '../../../../test/utils/mockFn.ts';
+
+type JournalStorageClient = JsonLocalStorageClient<PersistedJournalEntry[]>;
 
 const createEntry = (day: number, title = `Day ${day}`): PersistedJournalEntry => ({
   day,
@@ -91,107 +25,242 @@ const createEntry = (day: number, title = `Day ${day}`): PersistedJournalEntry =
   photos: [],
 });
 
-const defaultSnapshot = {
+const defaultWriteResult: StorageWriteResult = {
+  success: true,
+  quotaExceeded: false,
+  bytes: 0,
+};
+
+const defaultSnapshot: StorageSnapshot = {
   main: null,
   backup1: null,
   backup2: null,
   version: null,
 };
 
-beforeEach(() => {
-  vi.clearAllMocks();
-  writeMock.mockReturnValue({ success: true, bytes: 100, quotaExceeded: false });
-  readRawMock.mockReturnValue(null);
-  snapshotMock.mockReturnValue(defaultSnapshot);
-  normalizePhotosForPersistenceMock.mockImplementation(async (entries: PersistedJournalEntry[]) => entries);
-  validatePersistedEntriesMock.mockImplementation((entries: PersistedJournalEntry[]) => entries);
-  recoverEntriesFromBackupsMock.mockReturnValue([]);
-});
+const createStorageClientStub = () => {
+  const read = createMockFn<[], PersistedJournalEntry[] | null>();
+  read.mockReturnValue(null);
+  const readRaw = createMockFn<[], string | null>();
+  readRaw.mockReturnValue(null);
+  const write = createMockFn<[PersistedJournalEntry[]], StorageWriteResult>();
+  write.mockReturnValue(defaultWriteResult);
+  const writeRaw = createMockFn<[string], StorageWriteResult>();
+  writeRaw.mockReturnValue(defaultWriteResult);
+  const getBackup = createMockFn<['primary' | 'secondary'], string | null>();
+  getBackup.mockReturnValue(null);
+  const restoreFromBackup = createMockFn<
+    ['primary' | 'secondary'],
+    PersistedJournalEntry[] | null
+  >();
+  restoreFromBackup.mockReturnValue(null);
+  const snapshot = createMockFn<[], StorageSnapshot>();
+  snapshot.mockReturnValue(defaultSnapshot);
+  const clear = createMockFn<[], void>();
+  const getVersion = createMockFn<[], string | null>();
+  getVersion.mockReturnValue(null);
+  const setVersion = createMockFn<[string], void>();
+  const clearVersion = createMockFn<[], void>();
+
+  const client: JournalStorageClient = {
+    read: () => read(),
+    readRaw: () => readRaw(),
+    write: (value) => write(value),
+    writeRaw: (payload) => writeRaw(payload),
+    getBackup: (slot) => getBackup(slot),
+    restoreFromBackup: (slot) => restoreFromBackup(slot),
+    snapshot: () => snapshot(),
+    clear: () => clear(),
+    getVersion: () => getVersion(),
+    setVersion: (version) => setVersion(version),
+    clearVersion: () => clearVersion(),
+  };
+
+  return {
+    client,
+    read,
+    readRaw,
+    write,
+    writeRaw,
+    getBackup,
+    restoreFromBackup,
+    snapshot,
+    clear,
+    getVersion,
+    setVersion,
+    clearVersion,
+  };
+};
+
+const createDependencies = () => {
+  const storage = createStorageClientStub();
+  const normalizePhotos = createMockFn<
+    [PersistedJournalEntry[]],
+    Promise<PersistedJournalEntry[]>
+  >();
+  normalizePhotos.mockImplementation(async (entries) => entries);
+
+  const migrations = {
+    bootstrapJournalStorage: createMockFn<[], void>(),
+    ensureStorageVersion: createMockFn<[JournalStorageClient], void>(),
+    recoverEntriesFromBackups: createMockFn<
+      [JournalStorageClient],
+      PersistedJournalEntry[]
+    >(),
+    registerImportedEntries: createMockFn<[PersistedJournalEntry[]], void>(),
+    resetJournalStorage: createMockFn<[JournalStorageClient], void>(),
+    validatePersistedEntries: createMockFn<[unknown], PersistedJournalEntry[]>(),
+  } satisfies JournalRepositoryDependencies['migrations'];
+
+  migrations.recoverEntriesFromBackups.mockReturnValue([]);
+  migrations.validatePersistedEntries.mockImplementation((value) =>
+    Array.isArray(value) ? (value as PersistedJournalEntry[]) : [],
+  );
+
+  const contentStore = {
+    markJournalDayAsCustom: createMockFn<[number], void>(),
+    syncJournalSources: createMockFn<[PersistedJournalEntry[]], void>(),
+  } satisfies JournalRepositoryDependencies['contentStore'];
+
+  const logger = {
+    error: createMockFn<[string, unknown?], void>(),
+    warn: createMockFn<[string, unknown?], void>(),
+    info: createMockFn<[string, unknown?], void>(),
+    debug: createMockFn<[string, unknown?], void>(),
+  } satisfies JournalRepositoryDependencies['logger'];
+
+  const repository = createJournalRepository({
+    storageClient: storage.client,
+    normalizePhotos: (entries) => normalizePhotos(entries),
+    migrations,
+    contentStore,
+    logger,
+  });
+
+  return { repository, storage, migrations, contentStore, logger, normalizePhotos };
+};
 
 describe('journalRepository.saveJournalEntries', () => {
-  it('rejects non-array payloads', async () => {
-    const result = await saveJournalEntries(null as unknown as PersistedJournalEntry[]);
+  let dependencies: ReturnType<typeof createDependencies>;
 
-    expect(result).toBe(false);
-    expect(loggerErrorMock).toHaveBeenCalledWith(expect.stringContaining('Format d\'entrées invalide'));
-    expect(writeMock).not.toHaveBeenCalled();
+  beforeEach(() => {
+    dependencies = createDependencies();
+  });
+
+  it('rejects non-array payloads', async () => {
+    const result = await dependencies.repository.saveJournalEntries(
+      null as unknown as PersistedJournalEntry[],
+    );
+
+    assert.strictEqual(result, false);
+    assert.strictEqual(dependencies.logger.error.calls.length, 1);
+    const [message] = dependencies.logger.error.calls[0] ?? [];
+    assert.ok(typeof message === 'string' && message.includes('Format d'));
+    assert.strictEqual(dependencies.storage.write.calls.length, 0);
   });
 
   it('skips persistence when no entries remain after validation', async () => {
-    validatePersistedEntriesMock.mockReturnValue([]);
+    dependencies.migrations.validatePersistedEntries.mockReturnValue([]);
 
-    const result = await saveJournalEntries([createEntry(1)]);
+    const result = await dependencies.repository.saveJournalEntries([createEntry(1)]);
 
-    expect(result).toBe(false);
-    expect(loggerWarnMock).toHaveBeenCalledWith(expect.stringContaining('Aucune entrée valide'));
-    expect(writeMock).not.toHaveBeenCalled();
+    assert.strictEqual(result, false);
+    assert.strictEqual(dependencies.logger.warn.calls.length, 1);
+    assert.strictEqual(dependencies.storage.write.calls.length, 0);
   });
 
   it('normalizes, sorts and persists entries when storage succeeds', async () => {
     const first = createEntry(5, 'Late');
     const second = createEntry(2, 'Early');
 
-    const result = await saveJournalEntries([first, second]);
+    const result = await dependencies.repository.saveJournalEntries([first, second]);
 
-    expect(result).toBe(true);
-    expect(normalizePhotosForPersistenceMock).toHaveBeenCalledWith([first, second]);
-    expect(writeMock).toHaveBeenCalledWith([second, first]);
-    expect(syncJournalSourcesMock).toHaveBeenCalledWith([second, first]);
+    assert.strictEqual(result, true);
+    assert.strictEqual(dependencies.normalizePhotos.calls.length, 1);
+    assert.deepEqual(dependencies.normalizePhotos.calls[0], [[first, second]]);
+    assert.strictEqual(dependencies.storage.write.calls.length, 1);
+    assert.deepEqual(dependencies.storage.write.calls[0], [[second, first]]);
+    assert.strictEqual(dependencies.contentStore.syncJournalSources.calls.length, 1);
+    assert.deepEqual(dependencies.contentStore.syncJournalSources.calls[0], [[second, first]]);
   });
 
   it('returns false when storage write fails', async () => {
-    writeMock.mockReturnValueOnce({ success: false, bytes: 42, quotaExceeded: false });
+    dependencies.storage.write.mockReturnValueOnce({
+      success: false,
+      quotaExceeded: false,
+      bytes: 0,
+    });
 
-    const result = await saveJournalEntries([createEntry(3)]);
+    const result = await dependencies.repository.saveJournalEntries([createEntry(3)]);
 
-    expect(result).toBe(false);
-    expect(syncJournalSourcesMock).not.toHaveBeenCalled();
+    assert.strictEqual(result, false);
+    assert.strictEqual(dependencies.contentStore.syncJournalSources.calls.length, 0);
   });
 });
 
 describe('journalRepository.loadJournalEntries', () => {
-  it('returns an empty array when nothing is stored', () => {
-    const entries = loadJournalEntries();
+  let dependencies: ReturnType<typeof createDependencies>;
 
-    expect(entries).toEqual([]);
-    expect(ensureStorageVersionMock).toHaveBeenCalledWith(storageClientMock);
-    expect(syncJournalSourcesMock).not.toHaveBeenCalled();
+  beforeEach(() => {
+    dependencies = createDependencies();
+  });
+
+  it('returns an empty array when nothing is stored', () => {
+    const entries = dependencies.repository.loadJournalEntries();
+
+    assert.deepEqual(entries, []);
+    assert.strictEqual(dependencies.migrations.ensureStorageVersion.calls.length, 1);
+    assert.strictEqual(
+      dependencies.migrations.ensureStorageVersion.calls[0]?.[0],
+      dependencies.storage.client,
+    );
+    assert.strictEqual(dependencies.contentStore.syncJournalSources.calls.length, 0);
   });
 
   it('recovers from backups when parsing fails', () => {
-    readRawMock.mockReturnValueOnce('not-json');
     const recovered = [createEntry(7)];
-    recoverEntriesFromBackupsMock.mockReturnValueOnce(recovered);
+    dependencies.storage.readRaw.mockReturnValueOnce('not-json');
+    dependencies.migrations.recoverEntriesFromBackups.mockReturnValueOnce(recovered);
 
-    const entries = loadJournalEntries();
+    const entries = dependencies.repository.loadJournalEntries();
 
-    expect(entries).toBe(recovered);
-    expect(recoverEntriesFromBackupsMock).toHaveBeenCalledWith(storageClientMock);
-    expect(syncJournalSourcesMock).not.toHaveBeenCalled();
+    assert.strictEqual(entries, recovered);
+    assert.strictEqual(dependencies.migrations.recoverEntriesFromBackups.calls.length, 1);
+    assert.strictEqual(
+      dependencies.migrations.recoverEntriesFromBackups.calls[0]?.[0],
+      dependencies.storage.client,
+    );
+    assert.strictEqual(dependencies.contentStore.syncJournalSources.calls.length, 0);
   });
 });
 
 describe('journalRepository.addJournalEntry', () => {
+  let dependencies: ReturnType<typeof createDependencies>;
+
+  beforeEach(() => {
+    dependencies = createDependencies();
+  });
+
   it('persists the new entry and marks the day as custom', async () => {
-    readRawMock.mockImplementationOnce(() => JSON.stringify([]));
+    dependencies.storage.readRaw.mockReturnValueOnce(JSON.stringify([]));
 
     const entry = createEntry(4, 'New entry');
-    const success = await addJournalEntry(entry);
+    const success = await dependencies.repository.addJournalEntry(entry);
 
-    expect(success).toBe(true);
-    expect(writeMock).toHaveBeenCalledWith([entry]);
-    expect(markJournalDayAsCustomMock).toHaveBeenCalledWith(4);
+    assert.strictEqual(success, true);
+    assert.deepEqual(dependencies.storage.write.calls.at(-1), [[entry]]);
+    assert.deepEqual(dependencies.contentStore.markJournalDayAsCustom.calls.at(-1), [4]);
   });
 
   it('replaces an existing entry when the day already exists', async () => {
     const existing = createEntry(10, 'Existing');
-    readRawMock.mockImplementationOnce(() => JSON.stringify([existing]));
+    dependencies.storage.readRaw.mockReturnValueOnce(JSON.stringify([existing]));
 
     const updated = { ...existing, story: 'Updated story' };
-    const success = await addJournalEntry(updated);
+    const success = await dependencies.repository.addJournalEntry(updated);
 
-    expect(success).toBe(true);
-    expect(writeMock).toHaveBeenCalledWith([updated]);
-    expect(markJournalDayAsCustomMock).toHaveBeenCalledWith(10);
+    assert.strictEqual(success, true);
+    assert.deepEqual(dependencies.storage.write.calls.at(-1), [[updated]]);
+    assert.deepEqual(dependencies.contentStore.markJournalDayAsCustom.calls.at(-1), [10]);
   });
 });

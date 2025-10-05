@@ -34,13 +34,25 @@ export const placeReferences: PlaceReference[] = [
 
 export const PLACE_STORAGE_KEY = EDITOR_STORAGE_KEYS.map;
 
-const isBrowser = (): boolean =>
-  typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+const isBrowser = (override?: boolean): boolean => {
+  if (typeof override === "boolean") {
+    return override;
+  }
+
+  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+};
 
 type PlaceStatusFilter = ContentStatus | "all";
 
 interface GetPlaceReferencesOptions {
   status?: PlaceStatusFilter;
+}
+
+interface PlaceReferenceEnvironment {
+  storage?: Storage;
+  publicationState?: ReturnType<typeof loadPublicationState>;
+  logger?: typeof logger;
+  isBrowser?: boolean;
 }
 
 const canonicalPlaceIds = new Set(placeReferences.map((place) => place.id));
@@ -116,13 +128,16 @@ const sanitizeStoredPlaceReferences = (raw: unknown): PlaceReference[] => {
     .filter((place): place is PlaceReference => Boolean(place));
 };
 
-const loadStoredPlaceReferences = (): PlaceReference[] => {
-  if (!isBrowser()) {
+const loadStoredPlaceReferences = (
+  env?: PlaceReferenceEnvironment,
+): PlaceReference[] => {
+  if (!isBrowser(env?.isBrowser)) {
     return [];
   }
 
   try {
-    const raw = window.localStorage.getItem(PLACE_STORAGE_KEY);
+    const storage = env?.storage ?? window.localStorage;
+    const raw = storage.getItem(PLACE_STORAGE_KEY);
     if (!raw) {
       return [];
     }
@@ -130,7 +145,7 @@ const loadStoredPlaceReferences = (): PlaceReference[] => {
     const parsed = JSON.parse(raw);
     return sanitizeStoredPlaceReferences(parsed);
   } catch (error) {
-    logger.warn("⚠️ Impossible de charger les lieux personnalisés", error);
+    (env?.logger ?? logger).warn("⚠️ Impossible de charger les lieux personnalisés", error);
     return [];
   }
 };
@@ -143,19 +158,30 @@ const shouldInclude = (status: ContentStatus, filter: PlaceStatusFilter): boolea
   return status === filter;
 };
 
-export const getPlaceReferences = (options?: GetPlaceReferencesOptions): PlaceReference[] => {
+export const getPlaceReferences = (
+  options?: GetPlaceReferencesOptions,
+  environment?: PlaceReferenceEnvironment,
+): PlaceReference[] => {
   const filter = options?.status ?? "published";
 
-  if (!isBrowser()) {
+  const browser = isBrowser(environment?.isBrowser);
+
+  if (!browser) {
     if (filter === "draft") {
       return [];
     }
     return placeReferences.map((place) => ({ ...place }));
   }
 
-  const storedPlaces = loadStoredPlaceReferences();
+  const storage = environment?.storage ?? window.localStorage;
+  const storedPlaces = loadStoredPlaceReferences({
+    ...environment,
+    storage,
+    isBrowser: browser,
+  });
   const storedMap = new Map(storedPlaces.map((place) => [place.id, place]));
-  const publicationState = loadPublicationState();
+  const publicationState =
+    environment?.publicationState ?? loadPublicationState({ storage });
 
   const results: PlaceReference[] = [];
 

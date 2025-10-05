@@ -4,8 +4,12 @@ import type {
   RecoverableRepository,
   ResettableRepository,
 } from '@/repositories/ContentRepository';
-import { createJsonLocalStorageClient } from '@/storage/localStorageClient';
-import type { StorageSnapshot, StorageWriteResult } from '@/storage/localStorageClient';
+import {
+  createJsonLocalStorageClient,
+  type JsonLocalStorageClient,
+  type StorageSnapshot,
+  type StorageWriteResult,
+} from '@/storage/localStorageClient';
 import {
   JOURNAL_BACKUP_KEY,
   JOURNAL_SECONDARY_BACKUP_KEY,
@@ -27,7 +31,7 @@ import {
   syncJournalSources,
 } from '@/lib/contentStore';
 import type { PersistedJournalEntry } from '@/types/journal';
-import { logger } from '@/lib/logger';
+import { logger as defaultLogger } from '@/lib/logger';
 
 export type JournalEntry = PersistedJournalEntry;
 
@@ -40,231 +44,339 @@ export interface JournalStats {
   hasBackups: boolean;
 }
 
-const storageClient = createJsonLocalStorageClient<PersistedJournalEntry[]>({
-  storageKey: JOURNAL_STORAGE_KEY,
-  backupKeys: {
-    primary: JOURNAL_BACKUP_KEY,
-    secondary: JOURNAL_SECONDARY_BACKUP_KEY,
-  },
-  versionKey: JOURNAL_VERSION_KEY,
-  currentVersion: JOURNAL_STORAGE_VERSION,
-});
+export interface JournalRepositoryDependencies {
+  storageClient: JsonLocalStorageClient<PersistedJournalEntry[]>;
+  normalizePhotos: typeof normalizePhotosForPersistence;
+  migrations: {
+    bootstrapJournalStorage: typeof bootstrapJournalStorage;
+    ensureStorageVersion: typeof ensureStorageVersion;
+    recoverEntriesFromBackups: typeof recoverEntriesFromBackups;
+    registerImportedEntries: typeof registerImportedEntries;
+    resetJournalStorage: typeof resetJournalStorage;
+    validatePersistedEntries: typeof validatePersistedEntries;
+  };
+  contentStore: {
+    markJournalDayAsCustom: typeof markJournalDayAsCustom;
+    syncJournalSources: typeof syncJournalSources;
+  };
+  logger: typeof defaultLogger;
+}
 
-const logWriteResult = (result: StorageWriteResult): void => {
-  if (!result.success) {
-    if (result.quotaExceeded) {
-      logger.warn('⚠️ Quota localStorage dépassé lors de la sauvegarde des entrées du journal');
+export interface JournalRepositoryInstance {
+  saveJournalEntries: (entries: PersistedJournalEntry[]) => Promise<boolean>;
+  loadJournalEntries: () => PersistedJournalEntry[];
+  addJournalEntry: (entry: PersistedJournalEntry) => Promise<boolean>;
+  updateJournalEntry: (entry: PersistedJournalEntry) => Promise<boolean>;
+  recoverFromBackup: () => PersistedJournalEntry[];
+  getJournalStats: () => JournalStats;
+  importEntries: (
+    data: { entries: PersistedJournalEntry[] },
+  ) => Promise<{ success: boolean; imported?: number; error?: string }>;
+  resetStorage: () => PersistedJournalEntry[];
+  diagnosticTools: {
+    inspectStorage: () => StorageSnapshot;
+    forceMigration: () => PersistedJournalEntry[];
+    resetStorage: () => PersistedJournalEntry[];
+    recoverFromBackup: () => PersistedJournalEntry[];
+    exportAll: () => {
+      timestamp: string;
+      entries: PersistedJournalEntry[];
+      stats: JournalStats;
+      storage: StorageSnapshot;
+      metadata: { version: string; totalEntries: number; entryDays: number[] };
+    };
+    importData: (
+      data: { entries: PersistedJournalEntry[] },
+    ) => Promise<{ success: boolean; imported?: number; error?: string }>;
+  };
+  repository: ContentRepository<JournalEntry, JournalStats> &
+    RecoverableRepository<JournalEntry> &
+    ImportableRepository<JournalEntry> &
+    ResettableRepository;
+}
+
+const createStorageClient = () =>
+  createJsonLocalStorageClient<PersistedJournalEntry[]>({
+    storageKey: JOURNAL_STORAGE_KEY,
+    backupKeys: {
+      primary: JOURNAL_BACKUP_KEY,
+      secondary: JOURNAL_SECONDARY_BACKUP_KEY,
+    },
+    versionKey: JOURNAL_VERSION_KEY,
+    currentVersion: JOURNAL_STORAGE_VERSION,
+  });
+
+const toSortedEntries = (entries: PersistedJournalEntry[]) =>
+  [...entries].sort((a, b) => a.day - b.day);
+
+export const createJournalRepository = (
+  dependencies: JournalRepositoryDependencies,
+): JournalRepositoryInstance => {
+  const { storageClient, normalizePhotos, migrations, contentStore, logger } =
+    dependencies;
+
+  const logWriteResult = (result: StorageWriteResult): void => {
+    if (!result.success) {
+      if (result.quotaExceeded) {
+        logger.warn(
+          '⚠️ Quota localStorage dépassé lors de la sauvegarde des entrées du journal',
+        );
+      }
+
+      if (result.error) {
+        logger.error('❌ Erreur lors de la sauvegarde des entrées du journal', result.error);
+      }
+    }
+  };
+
+  const persistEntries = async (
+    entries: PersistedJournalEntry[],
+    { normalizePhotos: shouldNormalize }: { normalizePhotos: boolean },
+  ): Promise<boolean> => {
+    const entriesToPersist = shouldNormalize
+      ? await normalizePhotos(entries)
+      : entries;
+
+    const sortedEntries = toSortedEntries(entriesToPersist);
+    const result = storageClient.write(sortedEntries);
+    logWriteResult(result);
+
+    if (!result.success) {
+      return false;
     }
 
-    if (result.error) {
-      logger.error('❌ Erreur lors de la sauvegarde des entrées du journal', result.error);
-    }
-  }
-};
+    contentStore.syncJournalSources(sortedEntries);
+    return true;
+  };
 
-const persistEntries = async (
-  entries: PersistedJournalEntry[],
-  { normalizePhotos }: { normalizePhotos: boolean },
-): Promise<boolean> => {
-  const entriesToPersist = normalizePhotos
-    ? await normalizePhotosForPersistence(entries)
-    : entries;
+  const parseStoredEntries = (
+    raw: string,
+  ): PersistedJournalEntry[] | null => {
+    try {
+      const parsed = JSON.parse(raw);
+      const validEntries = migrations.validatePersistedEntries(parsed);
 
-  const sortedEntries = [...entriesToPersist].sort((a, b) => a.day - b.day);
-  const result = storageClient.write(sortedEntries);
-  logWriteResult(result);
+      if (!Array.isArray(parsed)) {
+        return null;
+      }
 
-  if (!result.success) {
-    return false;
-  }
+      if (validEntries.length !== parsed.length) {
+        logger.warn('⚠️ Entrées corrompues détectées lors de la lecture', {
+          corrupted: parsed.length - validEntries.length,
+        });
+        void persistEntries(validEntries, { normalizePhotos: false });
+      }
 
-  syncJournalSources(sortedEntries);
-  return true;
-};
-
-export const saveJournalEntries = async (
-  entries: PersistedJournalEntry[],
-): Promise<boolean> => {
-  if (!Array.isArray(entries)) {
-    logger.error('❌ Format d\'entrées invalide (tableau requis)');
-    return false;
-  }
-
-  const validatedEntries = validatePersistedEntries(entries);
-  if (validatedEntries.length === 0) {
-    logger.warn('⚠️ Aucune entrée valide à enregistrer');
-    return false;
-  }
-
-  return persistEntries(validatedEntries, { normalizePhotos: true });
-};
-
-const parseStoredEntries = (raw: string): PersistedJournalEntry[] | null => {
-  try {
-    const parsed = JSON.parse(raw);
-    const validEntries = validatePersistedEntries(parsed);
-
-    if (!Array.isArray(parsed)) {
+      return validEntries;
+    } catch (error) {
+      logger.error(
+        '❌ Format de données invalide dans le localStorage, tentative de récupération',
+        error,
+      );
       return null;
     }
+  };
 
-    if (validEntries.length !== parsed.length) {
-      logger.warn('⚠️ Entrées corrompues détectées lors de la lecture', {
-        corrupted: parsed.length - validEntries.length,
-      });
-      void persistEntries(validEntries, { normalizePhotos: false });
+  const loadJournalEntries = (): PersistedJournalEntry[] => {
+    migrations.bootstrapJournalStorage();
+
+    const raw = storageClient.readRaw();
+    if (!raw) {
+      migrations.ensureStorageVersion(storageClient);
+      return [];
     }
 
-    return validEntries;
-  } catch (error) {
-    logger.error('❌ Format de données invalide dans le localStorage, tentative de récupération', error);
-    return null;
-  }
-};
+    const parsedEntries = parseStoredEntries(raw);
+    if (!parsedEntries) {
+      return migrations.recoverEntriesFromBackups(storageClient);
+    }
 
-export const loadJournalEntries = (): PersistedJournalEntry[] => {
-  bootstrapJournalStorage();
+    migrations.ensureStorageVersion(storageClient);
+    contentStore.syncJournalSources(parsedEntries);
+    return parsedEntries;
+  };
 
-  const raw = storageClient.readRaw();
-  if (!raw) {
-    ensureStorageVersion(storageClient);
-    return [];
-  }
+  const saveJournalEntries = async (
+    entries: PersistedJournalEntry[],
+  ): Promise<boolean> => {
+    if (!Array.isArray(entries)) {
+      logger.error("❌ Format d'entrées invalide (tableau requis)");
+      return false;
+    }
 
-  const parsedEntries = parseStoredEntries(raw);
-  if (!parsedEntries) {
-    return recoverEntriesFromBackups(storageClient);
-  }
+    const validatedEntries = migrations.validatePersistedEntries(entries);
+    if (validatedEntries.length === 0) {
+      logger.warn('⚠️ Aucune entrée valide à enregistrer');
+      return false;
+    }
 
-  ensureStorageVersion(storageClient);
-  syncJournalSources(parsedEntries);
-  return parsedEntries;
-};
+    return persistEntries(validatedEntries, { normalizePhotos: true });
+  };
 
-export const recoverFromBackup = (): PersistedJournalEntry[] => {
-  return recoverEntriesFromBackups(storageClient);
-};
+  const recoverFromBackup = (): PersistedJournalEntry[] => {
+    return migrations.recoverEntriesFromBackups(storageClient);
+  };
 
-export const addJournalEntry = async (
-  newEntry: PersistedJournalEntry,
-): Promise<boolean> => {
-  const currentEntries = loadJournalEntries();
-  const existingIndex = currentEntries.findIndex((entry) => entry.day === newEntry.day);
+  const addJournalEntry = async (
+    newEntry: PersistedJournalEntry,
+  ): Promise<boolean> => {
+    const currentEntries = loadJournalEntries();
+    const existingIndex = currentEntries.findIndex((entry) => entry.day === newEntry.day);
 
-  let updatedEntries: PersistedJournalEntry[];
-  if (existingIndex >= 0) {
-    updatedEntries = [...currentEntries];
-    updatedEntries[existingIndex] = newEntry;
-  } else {
-    updatedEntries = [...currentEntries, newEntry];
-  }
+    let updatedEntries: PersistedJournalEntry[];
+    if (existingIndex >= 0) {
+      updatedEntries = [...currentEntries];
+      updatedEntries[existingIndex] = newEntry;
+    } else {
+      updatedEntries = [...currentEntries, newEntry];
+    }
 
-  const success = await persistEntries(updatedEntries, { normalizePhotos: true });
-  if (success) {
-    markJournalDayAsCustom(newEntry.day);
-  }
-
-  return success;
-};
-
-export const updateJournalEntry = async (
-  updatedEntry: PersistedJournalEntry,
-): Promise<boolean> => {
-  const currentEntries = loadJournalEntries();
-  const existingIndex = currentEntries.findIndex((entry) => entry.day === updatedEntry.day);
-
-  if (existingIndex >= 0) {
-    const updatedEntries = [...currentEntries];
-    updatedEntries[existingIndex] = updatedEntry;
     const success = await persistEntries(updatedEntries, { normalizePhotos: true });
     if (success) {
-      markJournalDayAsCustom(updatedEntry.day);
+      contentStore.markJournalDayAsCustom(newEntry.day);
     }
+
     return success;
-  }
-
-  return addJournalEntry(updatedEntry);
-};
-
-export const getJournalStats = (): JournalStats => {
-  const entries = loadJournalEntries();
-  const days = entries.map((entry) => entry.day).sort((a, b) => a - b);
-  const snapshot = storageClient.snapshot();
-
-  return {
-    totalEntries: entries.length,
-    minDay: days.length > 0 ? days[0] : 0,
-    maxDay: days.length > 0 ? days[days.length - 1] : 0,
-    days,
-    storageVersion: snapshot.version ?? 'unknown',
-    hasBackups: Boolean(snapshot.backup1 && snapshot.backup2),
   };
-};
 
-const exportDiagnostics = () => {
-  const snapshot = storageClient.snapshot();
-  const entries = loadJournalEntries();
-  const stats = getJournalStats();
+  const updateJournalEntry = async (
+    updatedEntry: PersistedJournalEntry,
+  ): Promise<boolean> => {
+    const currentEntries = loadJournalEntries();
+    const existingIndex = currentEntries.findIndex((entry) => entry.day === updatedEntry.day);
+
+    if (existingIndex >= 0) {
+      const nextEntries = [...currentEntries];
+      nextEntries[existingIndex] = updatedEntry;
+      const success = await persistEntries(nextEntries, { normalizePhotos: true });
+      if (success) {
+        contentStore.markJournalDayAsCustom(updatedEntry.day);
+      }
+      return success;
+    }
+
+    return addJournalEntry(updatedEntry);
+  };
+
+  const getJournalStats = (): JournalStats => {
+    const entries = loadJournalEntries();
+    const days = entries.map((entry) => entry.day).sort((a, b) => a - b);
+    const snapshot = storageClient.snapshot();
+
+    return {
+      totalEntries: entries.length,
+      minDay: days.length > 0 ? days[0] : 0,
+      maxDay: days.length > 0 ? days[days.length - 1] : 0,
+      days,
+      storageVersion: snapshot.version ?? 'unknown',
+      hasBackups: Boolean(snapshot.backup1 && snapshot.backup2),
+    };
+  };
+
+  const exportDiagnostics = () => {
+    const snapshot = storageClient.snapshot();
+    const entries = loadJournalEntries();
+    const stats = getJournalStats();
+
+    return {
+      timestamp: new Date().toISOString(),
+      entries,
+      stats,
+      storage: snapshot,
+      metadata: {
+        version: JOURNAL_STORAGE_VERSION,
+        totalEntries: entries.length,
+        entryDays: entries.map((entry) => entry.day),
+      },
+    };
+  };
+
+  const importEntries = async (data: { entries: PersistedJournalEntry[] }) => {
+    if (!data.entries || !Array.isArray(data.entries)) {
+      return { success: false, error: 'Invalid data format' };
+    }
+
+    const validEntries = migrations.validatePersistedEntries(data.entries);
+    const success = await persistEntries(validEntries, { normalizePhotos: true });
+
+    if (!success) {
+      return { success: false, error: 'Save failed' };
+    }
+
+    migrations.registerImportedEntries(validEntries);
+    return { success: true, imported: validEntries.length };
+  };
+
+  const forceMigration = () => {
+    storageClient.clearVersion();
+    migrations.bootstrapJournalStorage();
+    return loadJournalEntries();
+  };
+
+  const resetStorage = () => {
+    migrations.resetJournalStorage(storageClient);
+    return loadJournalEntries();
+  };
+
+  const diagnosticTools = {
+    inspectStorage: (): StorageSnapshot => storageClient.snapshot(),
+    forceMigration,
+    resetStorage,
+    recoverFromBackup,
+    exportAll: exportDiagnostics,
+    importData: importEntries,
+  };
 
   return {
-    timestamp: new Date().toISOString(),
-    entries,
-    stats,
-    storage: snapshot,
-    metadata: {
-      version: JOURNAL_STORAGE_VERSION,
-      totalEntries: entries.length,
-      entryDays: entries.map((entry) => entry.day),
+    saveJournalEntries,
+    loadJournalEntries,
+    addJournalEntry,
+    updateJournalEntry,
+    recoverFromBackup,
+    getJournalStats,
+    importEntries,
+    resetStorage,
+    diagnosticTools,
+    repository: {
+      load: loadJournalEntries,
+      save: saveJournalEntries,
+      add: addJournalEntry,
+      update: updateJournalEntry,
+      stats: getJournalStats,
+      recover: recoverFromBackup,
+      importData: importEntries,
+      reset: resetStorage,
     },
   };
 };
 
-const importEntries = async (data: { entries: PersistedJournalEntry[] }) => {
-  if (!data.entries || !Array.isArray(data.entries)) {
-    return { success: false, error: 'Invalid data format' };
-  }
+const defaultRepository = createJournalRepository({
+  storageClient: createStorageClient(),
+  normalizePhotos: normalizePhotosForPersistence,
+  migrations: {
+    bootstrapJournalStorage,
+    ensureStorageVersion,
+    recoverEntriesFromBackups,
+    registerImportedEntries,
+    resetJournalStorage,
+    validatePersistedEntries,
+  },
+  contentStore: {
+    markJournalDayAsCustom,
+    syncJournalSources,
+  },
+  logger: defaultLogger,
+});
 
-  const validEntries = validatePersistedEntries(data.entries);
-  const success = await persistEntries(validEntries, { normalizePhotos: true });
-
-  if (!success) {
-    return { success: false, error: 'Save failed' };
-  }
-
-  registerImportedEntries(validEntries);
-  return { success: true, imported: validEntries.length };
-};
-
-const forceMigration = () => {
-  storageClient.clearVersion();
-  bootstrapJournalStorage();
-  return loadJournalEntries();
-};
-
-const resetStorage = () => {
-  resetJournalStorage(storageClient);
-  return loadJournalEntries();
-};
-
-export const diagnosticTools = {
-  inspectStorage: (): StorageSnapshot => storageClient.snapshot(),
-  forceMigration,
-  resetStorage,
-  recoverFromBackup,
-  exportAll: exportDiagnostics,
-  importData: importEntries,
-};
+export const saveJournalEntries = defaultRepository.saveJournalEntries;
+export const loadJournalEntries = defaultRepository.loadJournalEntries;
+export const addJournalEntry = defaultRepository.addJournalEntry;
+export const updateJournalEntry = defaultRepository.updateJournalEntry;
+export const recoverFromBackup = defaultRepository.recoverFromBackup;
+export const getJournalStats = defaultRepository.getJournalStats;
+export const diagnosticTools = defaultRepository.diagnosticTools;
 
 export const journalRepository: ContentRepository<JournalEntry, JournalStats> &
   RecoverableRepository<JournalEntry> &
   ImportableRepository<JournalEntry> &
-  ResettableRepository = {
-    load: loadJournalEntries,
-    save: saveJournalEntries,
-    add: addJournalEntry,
-    update: updateJournalEntry,
-    stats: getJournalStats,
-    recover: recoverFromBackup,
-    importData: importEntries,
-    reset: resetStorage,
-  };
+  ResettableRepository = defaultRepository.repository;
