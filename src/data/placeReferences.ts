@@ -1,7 +1,5 @@
-import type { ContentStatus, PlaceReference as BasePlaceReference } from "@/types/content";
-import { EDITOR_STORAGE_KEYS } from "@/features/editor/constants";
-import { loadPublicationState, resolvePublicationStatus } from "@/features/publishing/publicationState";
-import { logger } from "@/lib/logger";
+import { logger } from '@/lib/logger';
+import type { PlaceReference as BasePlaceReference } from '@/types/content';
 
 export type PlaceReference = BasePlaceReference;
 
@@ -32,47 +30,9 @@ export const placeReferences: PlaceReference[] = [
   },
 ];
 
-export const PLACE_STORAGE_KEY = EDITOR_STORAGE_KEYS.map;
+const PLACE_REFERENCES_STORAGE_KEY = 'jordan-place-references';
 
-const isBrowser = typeof window !== "undefined" && typeof window.localStorage !== "undefined";
-
-type PlaceStatusFilter = ContentStatus | "all";
-
-interface GetPlaceReferencesOptions {
-  status?: PlaceStatusFilter;
-}
-
-const canonicalPlaceIds = new Set(placeReferences.map((place) => place.id));
-
-const coerceMediaAssetIds = (value: unknown): string[] | undefined => {
-  if (!Array.isArray(value)) {
-    return undefined;
-  }
-
-  const sanitized = value
-    .filter((item): item is string => typeof item === "string")
-    .map((item) => item.trim())
-    .filter((item) => item.length > 0);
-
-  return sanitized.length > 0 ? sanitized : undefined;
-};
-
-const coerceCoordinates = (value: unknown): [number, number] | null => {
-  if (!Array.isArray(value) || value.length !== 2) {
-    return null;
-  }
-
-  const [latitude, longitude] = value;
-  if (typeof latitude !== "number" || typeof longitude !== "number") {
-    return null;
-  }
-
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-    return null;
-  }
-
-  return [latitude, longitude];
-};
+const canonicalKey = (place: PlaceReference): string => `${place.day}-${place.name.toLowerCase()}`;
 
 const sanitizeStoredPlaceReferences = (raw: unknown): PlaceReference[] => {
   if (!Array.isArray(raw)) {
@@ -80,113 +40,103 @@ const sanitizeStoredPlaceReferences = (raw: unknown): PlaceReference[] => {
   }
 
   return raw
-    .map((item) => {
-      if (typeof item !== "object" || item === null) {
-        return null;
+    .filter((item): item is PlaceReference => {
+      if (typeof item !== 'object' || item === null) {
+        return false;
       }
 
       const candidate = item as Partial<PlaceReference> & {
         coordinates?: unknown;
-        mediaAssetIds?: unknown;
       };
 
-      if (typeof candidate.id !== "string" || typeof candidate.day !== "number") {
-        return null;
+      const { day, name, summary, coordinates } = candidate;
+
+      if (typeof day !== 'number' || !Number.isFinite(day)) {
+        return false;
       }
 
-      if (typeof candidate.name !== "string") {
-        return null;
+      if (typeof name !== 'string' || name.trim() === '') {
+        return false;
       }
 
-      const coordinates = coerceCoordinates(candidate.coordinates);
-      if (!coordinates) {
-        return null;
+      if (typeof summary !== 'string') {
+        return false;
       }
 
-      return {
-        id: candidate.id,
-        day: candidate.day,
-        name: candidate.name,
-        summary: typeof candidate.summary === "string" ? candidate.summary : "",
-        coordinates,
-        mediaAssetIds: coerceMediaAssetIds(candidate.mediaAssetIds),
-      } satisfies PlaceReference;
+      if (!Array.isArray(coordinates) || coordinates.length !== 2) {
+        return false;
+      }
+
+      const [latitude, longitude] = coordinates;
+      return (
+        typeof latitude === 'number' &&
+        Number.isFinite(latitude) &&
+        typeof longitude === 'number' &&
+        Number.isFinite(longitude)
+      );
     })
-    .filter((place): place is PlaceReference => Boolean(place));
+    .map((item) => {
+      const { day, name, summary, coordinates } = item;
+      const [latitude, longitude] = coordinates;
+      return {
+        day,
+        name,
+        summary,
+        coordinates: [latitude, longitude],
+      } satisfies PlaceReference;
+    });
 };
 
-const loadStoredPlaceReferences = (): PlaceReference[] => {
-  if (!isBrowser) {
+export const isBrowser = () =>
+  typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+
+export const loadStoredPlaceReferences = (): PlaceReference[] => {
+  if (!isBrowser()) {
     return [];
   }
 
   try {
-    const raw = window.localStorage.getItem(PLACE_STORAGE_KEY);
+    const raw = window.localStorage.getItem(PLACE_REFERENCES_STORAGE_KEY);
     if (!raw) {
       return [];
     }
 
-    const parsed = JSON.parse(raw);
+    const parsed = JSON.parse(raw) as unknown;
     return sanitizeStoredPlaceReferences(parsed);
   } catch (error) {
-    logger.warn("⚠️ Impossible de charger les lieux personnalisés", error);
+    logger.warn('⚠️ Impossible de charger les lieux personnalisés', error);
     return [];
   }
 };
 
-const shouldInclude = (status: ContentStatus, filter: PlaceStatusFilter): boolean => {
-  if (filter === "all") {
-    return true;
-  }
-
-  return status === filter;
-};
-
-export const getPlaceReferences = (options?: GetPlaceReferencesOptions): PlaceReference[] => {
-  const filter = options?.status ?? "published";
-
-  if (!isBrowser) {
-    if (filter === "draft") {
-      return [];
-    }
+export const getPlaceReferences = (): PlaceReference[] => {
+  if (!isBrowser()) {
     return placeReferences.map((place) => ({ ...place }));
   }
 
-  const storedPlaces = loadStoredPlaceReferences();
-  const storedMap = new Map(storedPlaces.map((place) => [place.id, place]));
-  const publicationState = loadPublicationState();
+  const storedReferences = loadStoredPlaceReferences();
+  if (storedReferences.length === 0) {
+    return placeReferences.map((place) => ({ ...place }));
+  }
 
-  const results: PlaceReference[] = [];
-
-  placeReferences.forEach((place) => {
-    const override = storedMap.get(place.id);
-    const candidate = override ?? place;
-    const status = resolvePublicationStatus(publicationState, "map", place.id, {
-      defaultStatus: "published",
-    });
-
-    if (shouldInclude(status, filter)) {
-      results.push({ ...candidate });
-    }
+  const overrides = new Map<string, PlaceReference>();
+  storedReferences.forEach((place) => {
+    overrides.set(canonicalKey(place), place);
   });
 
-  storedPlaces.forEach((place) => {
-    if (canonicalPlaceIds.has(place.id)) {
-      return;
+  const results: PlaceReference[] = placeReferences.map((place) => {
+    const override = overrides.get(canonicalKey(place));
+    if (!override) {
+      return { ...place };
     }
 
-    const status = resolvePublicationStatus(publicationState, "map", place.id, {
-      defaultStatus: "draft",
-    });
+    overrides.delete(canonicalKey(place));
+    return { ...override };
+  });
 
-    if (shouldInclude(status, filter)) {
-      results.push({ ...place });
-    }
+  overrides.forEach((place) => {
+    results.push({ ...place });
   });
 
   return results;
-};
-
-export const listCanonicalPlaceReferenceIds = (): readonly string[] => {
-  return placeReferences.map((place) => place.id);
 };
