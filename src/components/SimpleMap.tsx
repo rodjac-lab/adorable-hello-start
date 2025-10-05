@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
+import { logger } from '@/lib/logger';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useNavigate } from 'react-router-dom';
 
@@ -28,7 +29,7 @@ const SimpleMap = () => {
     if (!mapContainer.current || map.current) return;
 
     // Initialize map
-    console.log('🗺️ Mapbox Token:', MAPBOX_TOKEN ? 'Present' : 'MISSING');
+    logger.debug('🗺️ Mapbox Token:', MAPBOX_TOKEN ? 'Present' : 'MISSING');
     mapboxgl.accessToken = MAPBOX_TOKEN;
 
     try {
@@ -38,9 +39,9 @@ const SimpleMap = () => {
         center: [35.9106, 31.9539], // Centered on Amman
         zoom: 7
       });
-      console.log('✅ Map initialized successfully');
+      logger.debug('✅ Map initialized successfully');
     } catch (error) {
-      console.error('❌ Map initialization error:', error);
+      logger.error('❌ Map initialization error:', error);
       return;
     }
 
