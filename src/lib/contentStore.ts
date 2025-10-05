@@ -223,15 +223,6 @@ export const getReadingRecommendations = (): ReadingRecommendation[] => {
 };
 
 // Additional types and interfaces needed by hooks
-export interface MediaAsset {
-  id: string;
-  name: string;
-  type: string;
-  url: string;
-  size: number;
-  createdAt: string;
-}
-
 export interface ReadingItem {
   id: string;
   title: string;
@@ -279,29 +270,6 @@ export const removeFoodExperience = (id: string): void => {
   const currentState = storeContentStore.getState();
   const updatedExperiences = currentState.food.experiences.filter(exp => exp.id !== id);
   storeContentStore.updateFood({ experiences: updatedExperiences });
-};
-
-// Media Asset functions
-export const getMediaAssets = (): MediaAsset[] => {
-  // Return empty array for now - can be implemented when media store is ready
-  return [];
-};
-
-export const saveMediaAsset = (asset: Partial<MediaAsset>): MediaAsset => {
-  const newAsset: MediaAsset = {
-    id: asset.id || Date.now().toString(),
-    name: asset.name || '',
-    type: asset.type || '',
-    url: asset.url || '',
-    size: asset.size || 0,
-    createdAt: asset.createdAt || new Date().toISOString()
-  };
-  // Implementation needed when media store is ready
-  return newAsset;
-};
-
-export const removeMediaAsset = (id: string): void => {
-  // Implementation needed when media store is ready
 };
 
 // Reading Item functions

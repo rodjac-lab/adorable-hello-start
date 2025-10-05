@@ -47,8 +47,10 @@ Consolider l'architecture afin de rendre la création de contenu stable, typée 
    - Implémenter un mode "brouillon" et "publié" dans le store, avec actions explicites dans le Studio (`Publier`, `Revenir en brouillon`).
    - Synchroniser automatiquement les pages publiques (`Journal`, `Food`, etc.) via un selector qui agrège contenu canonique + custom publié.
 2. **Gestion média**
-   - Finaliser `MediaManager` : upload, compression asynchrone (Web Worker) et association aux entrées.
-   - Mettre en place un quota visuel et un diagnostic dans l'onglet Studio > Diagnostics.
+   - ✅ Centraliser la médiathèque dans un module dédié (`mediaStore`) avec sauvegardes, quotas et seeds canoniques.
+   - ✅ Refondre `MediaManager` pour gérer l'import compressé, l'édition des métadonnées et le suivi d'usage.
+   - ✅ Exposer un hook `useMediaLibrary` pour orchestrer les actions Studio et remonter les erreurs/toasts.
+   - 🔜 Associer les médias aux entrées Journal/Studio et enrichir les diagnostics.
 3. **Améliorations UX**
    - Ajouter un indicateur de progression (steps) et de validation des champs dans l'éditeur.
    - Implémenter une recherche globale (Fuse.js déjà listé en quick win) pour naviguer dans les contenus.
@@ -104,3 +106,10 @@ Consolider l'architecture afin de rendre la création de contenu stable, typée 
 - ✅ Ajout de la journalisation détaillée des opérations de géocodage et de compression pour faciliter le diagnostic.
 - ✅ Couverture Vitest sur les modules critiques (`publicationState`, client `localStorage`, `journalRepository`) et scripts `test`/`ci` prêts pour la CI.
 - ⚠️ Exécution CI bloquée tant que `npm install` ne peut pas récupérer `vitest` (erreur 403 registre) ; compléter les tests `mediaStore`/repositories supplémentaires une fois l'accès rétabli.
+
+## Finalisation Studio/Site — Gestion média (en cours)
+- ✅ Module `mediaStore` basé sur le client `localStorage` : backups, quotas, seeds par défaut et API de mise à jour.
+- ✅ Nouveau `MediaManager` unifié : import compressé, édition, recompression, indicateurs de quota et toasts.
+- ✅ Hook `useMediaLibrary` pour orchestrer les opérations Studio et surface d'erreurs cohérente.
+- ✅ Tests Vitest pour la persistance média (ordre, normalisation, helpers de taille).
+- 🔜 Rattacher les médias aux contenus (journal/cartes) et exposer les diagnostics de volumétrie dans l'onglet dédié.
