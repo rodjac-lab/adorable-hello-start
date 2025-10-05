@@ -15,16 +15,17 @@ interface FoodSectionProps {
 
 type FoodExperienceDraft = {
   id: string;
-  day: number | "";
-  dish: string;
-  location: string;
+  name: string;
+  type: string;
   description: string;
+  experience: string;
   rating: number | "";
-  cultural_note?: string;
+  location: string;
+  price: string;
 };
 
-const sortByDay = (items: FoodExperience[]): FoodExperience[] =>
-  [...items].sort((a, b) => a.day - b.day);
+const sortByName = (items: FoodExperience[]): FoodExperience[] =>
+  [...items].sort((a, b) => a.name.localeCompare(b.name));
 
 const generateId = (): string => {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -35,58 +36,66 @@ const generateId = (): string => {
 };
 
 const createDraft = (items: FoodExperience[]): FoodExperienceDraft => {
-  const maxDay = items.reduce((max, item) => Math.max(max, item.day), 0);
   return {
     id: generateId(),
-    day: maxDay + 1,
-    dish: "",
-    location: "",
+    name: "",
+    type: "",
     description: "",
-    rating: 5,
-    cultural_note: "",
+    experience: "",
+    rating: items.length > 0 ? 4 : 5,
+    location: "",
+    price: "",
   };
 };
 
 const toDraft = (experience: FoodExperience): FoodExperienceDraft => ({
   id: experience.id,
-  day: experience.day,
-  dish: experience.dish,
-  location: experience.location,
+  name: experience.name,
+  type: experience.type,
   description: experience.description,
+  experience: experience.experience,
   rating: experience.rating,
-  cultural_note: experience.cultural_note ?? "",
+  location: experience.location,
+  price: experience.price,
 });
 
 const fromDraft = (draft: FoodExperienceDraft): FoodExperience | null => {
-  if (typeof draft.day !== "number" || Number.isNaN(draft.day)) {
+  if (typeof draft.rating !== "number" || Number.isNaN(draft.rating)) {
     return null;
   }
 
-  if (typeof draft.rating !== "number" || Number.isNaN(draft.rating)) {
+  const name = draft.name.trim();
+  const type = draft.type.trim();
+  const description = draft.description.trim();
+  const personalExperience = draft.experience.trim();
+  const location = draft.location.trim();
+  const price = draft.price.trim();
+
+  if (!name || !type || !description || !personalExperience || !location || !price) {
     return null;
   }
 
   return {
     id: draft.id,
-    day: draft.day,
-    dish: draft.dish.trim(),
-    location: draft.location.trim(),
-    description: draft.description.trim(),
+    name,
+    type,
+    description,
+    experience: personalExperience,
     rating: draft.rating,
-    cultural_note: draft.cultural_note?.trim() || undefined,
+    location,
+    price,
   };
 };
 
 const validateDraft = (draft: FoodExperienceDraft): string[] => {
   const errors: string[] = [];
 
-  const dayValue = typeof draft.day === "number" ? draft.day : Number.NaN;
-  if (Number.isNaN(dayValue) || dayValue <= 0) {
-    errors.push("Le jour doit être un nombre positif.");
+  if (!draft.name.trim()) {
+    errors.push("Le nom du plat est obligatoire.");
   }
 
-  if (!draft.dish.trim()) {
-    errors.push("Le nom du plat est obligatoire.");
+  if (!draft.type.trim()) {
+    errors.push("Le type de plat est obligatoire.");
   }
 
   if (!draft.location.trim()) {
@@ -97,10 +106,16 @@ const validateDraft = (draft: FoodExperienceDraft): string[] => {
     errors.push("La description est obligatoire.");
   }
 
+  if (!draft.experience.trim()) {
+    errors.push("Racontez votre expérience personnelle.");
+  }
+
+  if (!draft.price.trim()) {
+    errors.push("Indiquez une indication de prix.");
+  }
+
   const ratingValue = typeof draft.rating === "number" ? draft.rating : Number.NaN;
-  if (Number.isNaN(ratingValue)) {
-    errors.push("La note doit être un nombre entre 1 et 5.");
-  } else if (ratingValue < 1 || ratingValue > 5) {
+  if (Number.isNaN(ratingValue) || ratingValue < 1 || ratingValue > 5) {
     errors.push("La note doit être comprise entre 1 et 5.");
   }
 
@@ -115,11 +130,20 @@ export const FoodSection = ({ experiences, onChange }: FoodSectionProps) => {
     createDraft,
     toDraft,
     fromDraft,
-    sort: sortByDay,
+    sort: sortByName,
     validateDraft,
   });
 
   const formTitle = editor.mode === "edit" ? "Modifier une expérience" : "Ajouter une expérience";
+  const isSaveDisabled =
+    editor.draft == null ||
+    typeof editor.draft.rating !== "number" ||
+    !editor.draft.name.trim() ||
+    !editor.draft.type.trim() ||
+    !editor.draft.description.trim() ||
+    !editor.draft.experience.trim() ||
+    !editor.draft.location.trim() ||
+    !editor.draft.price.trim();
 
   return (
     <GenericListEditor
@@ -134,24 +158,37 @@ export const FoodSection = ({ experiences, onChange }: FoodSectionProps) => {
             onSave={editor.saveDraft}
             onCancel={editor.cancelEdit}
             errors={editor.errors}
-            isSaveDisabled={editor.draft.day === "" || editor.draft.rating === ""}
+            isSaveDisabled={isSaveDisabled}
           >
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="text-sm font-medium" htmlFor="food-day">Jour</label>
+                <label className="text-sm font-medium" htmlFor="food-name">
+                  Nom du plat
+                </label>
                 <Input
-                  id="food-day"
-                  type="number"
-                  value={editor.draft.day}
-                  onChange={(event) => {
-                    const rawValue = event.target.value;
-                    const parsed = Number.parseInt(rawValue, 10);
-                    editor.updateDraft({ day: Number.isNaN(parsed) ? "" : parsed });
-                  }}
+                  id="food-name"
+                  value={editor.draft.name}
+                  placeholder="Mansaf"
+                  onChange={(event) => editor.updateDraft({ name: event.target.value })}
                 />
               </div>
               <div>
-                <label className="text-sm font-medium" htmlFor="food-rating">Note (1-5)</label>
+                <label className="text-sm font-medium" htmlFor="food-type">
+                  Type
+                </label>
+                <Input
+                  id="food-type"
+                  value={editor.draft.type}
+                  placeholder="Plat national"
+                  onChange={(event) => editor.updateDraft({ type: event.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="text-sm font-medium" htmlFor="food-rating">
+                  Note (1-5)
+                </label>
                 <Input
                   id="food-rating"
                   type="number"
@@ -165,43 +202,53 @@ export const FoodSection = ({ experiences, onChange }: FoodSectionProps) => {
                   }}
                 />
               </div>
+              <div>
+                <label className="text-sm font-medium" htmlFor="food-price">
+                  Prix / budget
+                </label>
+                <Input
+                  id="food-price"
+                  value={editor.draft.price}
+                  placeholder="Abordable"
+                  onChange={(event) => editor.updateDraft({ price: event.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="text-sm font-medium" htmlFor="food-location">
+                  Lieu
+                </label>
+                <Input
+                  id="food-location"
+                  value={editor.draft.location}
+                  placeholder="Downtown Amman"
+                  onChange={(event) => editor.updateDraft({ location: event.target.value })}
+                />
+              </div>
             </div>
             <div>
-              <label className="text-sm font-medium" htmlFor="food-dish">Plat</label>
-              <Input
-                id="food-dish"
-                value={editor.draft.dish}
-                placeholder="Mansaf"
-                onChange={(event) => editor.updateDraft({ dish: event.target.value })}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium" htmlFor="food-location">Lieu</label>
-              <Input
-                id="food-location"
-                value={editor.draft.location}
-                placeholder="Restaurant traditionnel, Amman"
-                onChange={(event) => editor.updateDraft({ location: event.target.value })}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium" htmlFor="food-description">Description</label>
+              <label className="text-sm font-medium" htmlFor="food-description">
+                Description
+              </label>
               <Textarea
                 id="food-description"
-                rows={4}
+                rows={3}
                 value={editor.draft.description}
-                placeholder="Décrivez le plat et votre expérience..."
+                placeholder="Décrivez le plat..."
                 onChange={(event) => editor.updateDraft({ description: event.target.value })}
               />
             </div>
             <div>
-              <label className="text-sm font-medium" htmlFor="food-note">Note culturelle (optionnel)</label>
+              <label className="text-sm font-medium" htmlFor="food-experience">
+                Votre expérience
+              </label>
               <Textarea
-                id="food-note"
+                id="food-experience"
                 rows={3}
-                value={editor.draft.cultural_note ?? ""}
-                placeholder="Informations culturelles sur ce plat..."
-                onChange={(event) => editor.updateDraft({ cultural_note: event.target.value })}
+                value={editor.draft.experience}
+                placeholder="Partagez votre ressenti, anecdotes, contexte..."
+                onChange={(event) => editor.updateDraft({ experience: event.target.value })}
               />
             </div>
           </EntryForm>
@@ -212,11 +259,14 @@ export const FoodSection = ({ experiences, onChange }: FoodSectionProps) => {
         <Card key={experience.id}>
           <CardHeader>
             <div className="flex items-start justify-between">
-              <div>
-                <Badge variant="outline">Jour {experience.day}</Badge>
-                <CardTitle className="mt-2">{experience.dish}</CardTitle>
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline">{experience.type}</Badge>
+                  <Badge>{experience.price}</Badge>
+                </div>
+                <CardTitle>{experience.name}</CardTitle>
                 <p className="text-sm text-muted-foreground">{experience.location}</p>
-                <div className="mt-1 text-sm" aria-label={`Note ${experience.rating} sur 5`}>
+                <div className="text-sm" aria-label={`Note ${experience.rating} sur 5`}>
                   {"⭐".repeat(experience.rating)}
                 </div>
               </div>
@@ -230,11 +280,19 @@ export const FoodSection = ({ experiences, onChange }: FoodSectionProps) => {
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm leading-relaxed">{experience.description}</p>
-            {experience.cultural_note && (
-              <p className="mt-3 text-sm text-muted-foreground">{experience.cultural_note}</p>
-            )}
+          <CardContent className="space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Description
+              </h3>
+              <p className="text-sm leading-relaxed">{experience.description}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Mon expérience
+              </h3>
+              <p className="text-sm leading-relaxed text-muted-foreground">{experience.experience}</p>
+            </div>
           </CardContent>
         </Card>
       ))}

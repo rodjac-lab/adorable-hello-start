@@ -78,12 +78,13 @@ export const getJournalEntry = (day: number) => journalEntries.find((entry) => e
 
 const serializeFoodExperiences = (experiences: FoodExperience[]): string => `export interface FoodExperience {
   id: string;
-  day: number;
-  dish: string;
-  location: string;
+  name: string;
+  type: string;
   description: string;
+  experience: string;
   rating: number;
-  cultural_note?: string;
+  location: string;
+  price: string;
 }
 
 export const foodExperiences: FoodExperience[] = ${JSON.stringify(experiences, null, 2)};
@@ -95,10 +96,11 @@ const serializeBookRecommendations = (books: BookRecommendation[]): string => `e
   id: string;
   title: string;
   author: string;
+  type: string;
   description: string;
-  category: string;
-  why_recommend: string;
-  amazon_link?: string;
+  why: string;
+  amazon: string;
+  rating: number;
 }
 
 export const readingRecommendations: BookRecommendation[] = ${JSON.stringify(books, null, 2)};
@@ -108,13 +110,22 @@ export const getReadingRecommendations = () => readingRecommendations;
 
 const EditorPage = () => {
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>(() =>
-    loadCollection(JOURNAL_STORAGE_KEY, canonicalJournalEntries),
+    loadCollection(
+      JOURNAL_STORAGE_KEY,
+      canonicalJournalEntries.map((entry) => ({ ...entry })),
+    ),
   );
   const [foodExperiences, setFoodExperiences] = useState<FoodExperience[]>(() =>
-    loadCollection(FOOD_STORAGE_KEY, canonicalFoodExperiences),
+    loadCollection(
+      FOOD_STORAGE_KEY,
+      canonicalFoodExperiences.map((experience) => ({ ...experience })),
+    ),
   );
   const [bookRecommendations, setBookRecommendations] = useState<BookRecommendation[]>(() =>
-    loadCollection(BOOK_STORAGE_KEY, canonicalReadingRecommendations),
+    loadCollection(
+      BOOK_STORAGE_KEY,
+      canonicalReadingRecommendations.map((book) => ({ ...book })),
+    ),
   );
 
   const handleSave = useCallback(() => {
