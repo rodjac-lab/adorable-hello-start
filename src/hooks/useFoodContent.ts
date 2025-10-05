@@ -7,6 +7,7 @@ import {
   subscribeToContentStore,
 } from '@/lib/contentStore';
 import type { FoodExperience } from '@/store/contentStore';
+import { logger } from '@/lib/logger';
 
 export const useFoodContent = () => {
   const [experiences, setExperiences] = useState<FoodExperience[]>([]);
@@ -19,7 +20,7 @@ export const useFoodContent = () => {
       setExperiences(data);
       setError(null);
     } catch (err) {
-      console.error('Failed to load food experiences', err);
+      logger.error('Erreur lors du chargement des expériences culinaires', err);
       setError('Erreur lors du chargement des expériences culinaires');
     } finally {
       setIsLoading(false);
@@ -42,7 +43,7 @@ export const useFoodContent = () => {
       setExperiences(data);
       setError(null);
     } catch (err) {
-      console.error('Failed to reload food experiences', err);
+      logger.error('Erreur lors du rechargement des expériences culinaires', err);
       setError('Erreur lors du rechargement des expériences culinaires');
     } finally {
       setIsLoading(false);
@@ -56,7 +57,7 @@ export const useFoodContent = () => {
       setError(null);
       return saved;
     } catch (err) {
-      console.error('Failed to save food experience', err);
+      logger.error('Erreur lors de la sauvegarde d\'une expérience culinaire', err);
       setError('Erreur lors de la sauvegarde de l\'expérience culinaire');
       throw err;
     }
@@ -68,7 +69,7 @@ export const useFoodContent = () => {
       setExperiences(getFoodExperiences());
       setError(null);
     } catch (err) {
-      console.error('Failed to delete food experience', err);
+      logger.error('Erreur lors de la suppression d\'une expérience culinaire', err);
       setError('Erreur lors de la suppression de l\'expérience culinaire');
       throw err;
     }
