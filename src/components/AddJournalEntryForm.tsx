@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm, UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import type { JournalEntryFormData, PersistedJournalEntry } from "@/types/journal";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { CalendarIcon, Plus, X } from "lucide-react";
@@ -17,6 +18,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
 
 // Function to parse French date format like "15 mars 2024"
 const parseFrenchDate = (dateString: string): Date | undefined => {
@@ -47,16 +49,16 @@ const parseFrenchDate = (dateString: string): Date | undefined => {
       }
     }
 
-    console.warn('Failed to parse French date:', dateString);
+    logger.warn('Failed to parse French date', { dateString });
     return undefined;
   } catch (error) {
-    console.error('Error parsing date:', dateString, error);
+    logger.error('Error parsing date', { dateString, error });
     return undefined;
   }
 };
 
 // Define the schema for form validation
-const journalEntrySchema = z.object({
+const journalEntrySchema: z.ZodType<JournalEntryFormData> = z.object({
   day: z.number().min(1, "Le jour doit être au moins 1"),
   date: z.date({
     required_error: "La date est requise",
@@ -69,21 +71,10 @@ const journalEntrySchema = z.object({
   photos: z.array(z.string()).optional(),
 });
 
-export type JournalEntryFormData = z.infer<typeof journalEntrySchema>;
-
 export interface AddJournalEntryFormProps {
   onSubmit: (entry: JournalEntryFormData) => Promise<boolean | void> | boolean | void;
   onCancel: () => void;
-  editEntry?: {
-    day: number;
-    date: string;
-    title: string;
-    location: string;
-    story: string;
-    mood: string;
-    photos?: string[];
-    link?: string;
-  };
+  editEntry?: PersistedJournalEntry;
 }
 
 const MOOD_OPTIONS = [

@@ -73,37 +73,47 @@ const FoodExperienceCard = memo(({ experience }: { experience: FoodExperience })
   return (
     <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-            Jour {experience.day}
-          </Badge>
-          <div className="text-lg">{stars}</div>
-        </div>
-        <CardTitle className="text-2xl">{experience.dish}</CardTitle>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>📍</span>
-          <span>{experience.location}</span>
+        <div className="flex items-start justify-between">
+          <div className="space-y-2">
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                {experience.type}
+              </Badge>
+              <Badge className="bg-amber-100 text-amber-900 dark:bg-amber-900 dark:text-amber-100">
+                {experience.price}
+              </Badge>
+            </div>
+            <CardTitle className="text-2xl">{experience.name}</CardTitle>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>📍</span>
+              <span>{experience.location}</span>
+            </div>
+            <div className="text-lg" aria-label={`Note ${experience.rating} sur 5`}>
+              {stars}
+            </div>
+          </div>
+          <div className="text-sm text-muted-foreground">{experience.price}</div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-muted-foreground leading-relaxed">{experience.description}</p>
-
-        {experience.cultural_note && (
-          <Card className="bg-secondary/10 border-secondary/20">
-            <CardContent className="pt-4">
-              <div className="flex items-start gap-2">
-                <span className="text-secondary text-lg">💡</span>
-                <div>
-                  <p className="font-medium text-secondary mb-1">Note culturelle</p>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{experience.cultural_note}</p>
-                </div>
+        <div>
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Description</h3>
+          <p className="text-muted-foreground leading-relaxed">{experience.description}</p>
+        </div>
+        <Card className="bg-secondary/10 border-secondary/20">
+          <CardContent className="pt-4">
+            <div className="flex items-start gap-2">
+              <span className="text-secondary text-lg">🍴</span>
+              <div>
+                <p className="font-medium text-secondary mb-1">Mon expérience</p>
+                <p className="text-sm text-muted-foreground leading-relaxed">{experience.experience}</p>
               </div>
-            </CardContent>
-          </Card>
-        )}
+            </div>
+          </CardContent>
+        </Card>
       </CardContent>
     </Card>
   );
-}, (prevProps, nextProps) => prevProps.experience.day === nextProps.experience.day);
+}, (prevProps, nextProps) => prevProps.experience.id === nextProps.experience.id);
 
 export default Food;
