@@ -23,6 +23,7 @@ import {
 } from "@/hooks/useMediaLibrary";
 import { Loader2, Plus, RefreshCcw, Trash2, Wand2 } from "lucide-react";
 import { getJournalEntries } from "@/data/journalEntries";
+import { getPlaceReferences } from "@/data/placeReferences";
 import { logger } from "@/lib/logger";
 
 interface MediaAssetDraft {
@@ -70,26 +71,51 @@ const tagsToString = (tags?: string[]): string => {
   return tags.join(", ");
 };
 
+type MediaUsageEntry = {
+  kind: "journal" | "place";
+  day?: number;
+  title: string;
+};
+
 interface MediaUsageDiagnostics {
   totalReferences: number;
   referenced: Array<{
     asset: MediaAsset;
     count: number;
-    entries: { day: number; title: string }[];
+    entries: MediaUsageEntry[];
   }>;
   unused: MediaAsset[];
 }
 
+const describeUsageEntry = (entry: MediaUsageEntry): string => {
+  const prefix = entry.kind === "journal" ? "Journal" : "Carte";
+  if (typeof entry.day === "number") {
+    return `${prefix} · Jour ${entry.day}`;
+  }
+
+  return `${prefix} · ${entry.title}`;
+};
+
 const buildMediaUsageDiagnostics = (assets: MediaAsset[]): MediaUsageDiagnostics => {
   try {
     const entries = getJournalEntries({ status: "all" });
-    const usage = new Map<string, { count: number; entries: { day: number; title: string }[] }>();
+    const places = getPlaceReferences({ status: "all" });
+    const usage = new Map<string, { count: number; entries: MediaUsageEntry[] }>();
 
     entries.forEach((entry) => {
       (entry.mediaAssetIds ?? []).forEach((assetId) => {
         const current = usage.get(assetId) ?? { count: 0, entries: [] };
         current.count += 1;
-        current.entries.push({ day: entry.day, title: entry.title });
+        current.entries.push({ kind: "journal", day: entry.day, title: entry.title });
+        usage.set(assetId, current);
+      });
+    });
+
+    places.forEach((place) => {
+      (place.mediaAssetIds ?? []).forEach((assetId) => {
+        const current = usage.get(assetId) ?? { count: 0, entries: [] };
+        current.count += 1;
+        current.entries.push({ kind: "place", day: place.day, title: place.name });
         usage.set(assetId, current);
       });
     });
@@ -98,10 +124,28 @@ const buildMediaUsageDiagnostics = (assets: MediaAsset[]): MediaUsageDiagnostics
       .filter((asset) => usage.has(asset.id))
       .map((asset) => {
         const metadata = usage.get(asset.id)!;
+        const entries = metadata.entries
+          .slice()
+          .sort((a, b) => {
+            if (typeof a.day === "number" && typeof b.day === "number") {
+              return a.day - b.day;
+            }
+
+            if (typeof a.day === "number") {
+              return -1;
+            }
+
+            if (typeof b.day === "number") {
+              return 1;
+            }
+
+            return a.title.localeCompare(b.title);
+          });
+
         return {
           asset,
           count: metadata.count,
-          entries: metadata.entries.sort((a, b) => a.day - b.day),
+          entries,
         };
       })
       .sort((a, b) => {
@@ -394,7 +438,7 @@ export const MediaManager = () => {
                 <li key={asset.id} className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                   <span className="font-medium text-foreground">{asset.name}</span>
                   <span>
-                    {count} entrée{count > 1 ? "s" : ""} — {entries.map((entry) => `Jour ${entry.day}`).join(", ")}
+                    {count} entrée{count > 1 ? "s" : ""} — {entries.map(describeUsageEntry).join(", ")}
                   </span>
                 </li>
               ))}

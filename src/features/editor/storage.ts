@@ -21,12 +21,17 @@ const STORAGE_BACKUPS: Record<string, { primary: string; secondary: string }> = 
     primary: getEditorBackupKey("books", "primary"),
     secondary: getEditorBackupKey("books", "secondary"),
   },
+  [EDITOR_STORAGE_KEYS.map]: {
+    primary: getEditorBackupKey("map", "primary"),
+    secondary: getEditorBackupKey("map", "secondary"),
+  },
 };
 
 const STORAGE_VERSIONS: Record<string, string> = {
   [EDITOR_STORAGE_KEYS.journal]: getEditorVersionKey("journal"),
   [EDITOR_STORAGE_KEYS.food]: getEditorVersionKey("food"),
   [EDITOR_STORAGE_KEYS.books]: getEditorVersionKey("books"),
+  [EDITOR_STORAGE_KEYS.map]: getEditorVersionKey("map"),
 };
 
 const isQuotaExceededError = (error: unknown): boolean => {

@@ -2,6 +2,7 @@ export const EDITOR_STORAGE_KEYS = {
   journal: "jordan-journal-entries",
   food: "jordan-food-experiences",
   books: "jordan-book-recommendations",
+  map: "jordan-place-references",
 } as const;
 
 export type EditorStorageCollection = keyof typeof EDITOR_STORAGE_KEYS;

@@ -12,6 +12,7 @@ const baseState = () => ({
   journal: {},
   food: {},
   books: {},
+  map: {},
 });
 
 describe('publicationState', () => {
@@ -54,6 +55,6 @@ describe('publicationState', () => {
 
   it('loads a default state safely when localStorage is unavailable', () => {
     const state = loadPublicationState();
-    expect(state).toMatchObject({ journal: {}, food: {}, books: {} });
+    expect(state).toMatchObject({ journal: {}, food: {}, books: {}, map: {} });
   });
 });
