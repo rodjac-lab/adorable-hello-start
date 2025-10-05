@@ -1,9 +1,11 @@
 import { foodExperiences as canonicalFoodExperiences } from '@/data/foodExperiences';
 import { readingRecommendations as canonicalReadingRecommendations } from '@/data/readingRecommendations';
 import type { JournalEntry } from '@/lib/journalStorage';
-import type { FoodExperience as BaseFoodExperience, ReadingRecommendation as BaseReadingRecommendation } from '@/types/content';
-
-export type ContentStatus = 'draft' | 'published';
+import type {
+  ContentStatus,
+  FoodExperience as BaseFoodExperience,
+  ReadingRecommendation as BaseReadingRecommendation,
+} from '@/types/content';
 
 export type FoodExperience = BaseFoodExperience;
 

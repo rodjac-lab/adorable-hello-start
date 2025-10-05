@@ -1,4 +1,5 @@
 export type ContentSource = 'canonical' | 'custom';
+export type ContentStatus = 'draft' | 'published';
 
 export interface FoodExperience {
   id: string;

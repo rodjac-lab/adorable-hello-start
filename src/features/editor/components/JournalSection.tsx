@@ -7,10 +7,14 @@ import type { JournalEntry } from "@/data/journalEntries";
 import { EntryForm } from "./EntryForm";
 import { GenericListEditor } from "./GenericListEditor";
 import { useEditableCollection } from "../hooks/useEditableCollection";
+import { PublicationStatusControls } from "./PublicationStatusControls";
+import type { ContentStatus } from "@/types/content";
 
 interface JournalSectionProps {
   entries: JournalEntry[];
   onChange: (entries: JournalEntry[]) => void;
+  getStatus: (day: number) => ContentStatus;
+  onStatusChange: (day: number, status: ContentStatus) => void;
 }
 
 type JournalEntryDraft = {
@@ -92,7 +96,7 @@ const validateDraft = (draft: JournalEntryDraft): string[] => {
   return errors;
 };
 
-export const JournalSection = ({ entries, onChange }: JournalSectionProps) => {
+export const JournalSection = ({ entries, onChange, getStatus, onStatusChange }: JournalSectionProps) => {
   const editor = useEditableCollection<JournalEntry, number, JournalEntryDraft>({
     items: entries,
     onChange,
@@ -190,35 +194,46 @@ export const JournalSection = ({ entries, onChange }: JournalSectionProps) => {
         )
       }
     >
-      {editor.sortedItems.map((entry) => (
-        <Card key={entry.day}>
-          <CardHeader>
-            <div className="flex items-start justify-between">
-              <div>
-                <Badge variant="outline">Jour {entry.day}</Badge>
-                <CardTitle className="mt-2">{entry.title}</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  {entry.date} • {entry.location}
-                </p>
+      {editor.sortedItems.map((entry) => {
+        const status = getStatus(entry.day);
+
+        return (
+          <Card key={entry.day}>
+            <CardHeader>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <Badge variant="outline">Jour {entry.day}</Badge>
+                  <CardTitle className="mt-2">{entry.title}</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    {entry.date} • {entry.location}
+                  </p>
+                </div>
+                <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+                  <PublicationStatusControls
+                    status={status}
+                    onPublish={() => onStatusChange(entry.day, "published")}
+                    onUnpublish={() => onStatusChange(entry.day, "draft")}
+                  />
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => editor.startEdit(entry.day)}>
+                      ✏️ Modifier
+                    </Button>
+                    <Button variant="destructive" size="sm" onClick={() => editor.deleteItem(entry.day)}>
+                      🗑️
+                    </Button>
+                  </div>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => editor.startEdit(entry.day)}>
-                  ✏️ Modifier
-                </Button>
-                <Button variant="destructive" size="sm" onClick={() => editor.deleteItem(entry.day)}>
-                  🗑️
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm leading-relaxed">{entry.story}</p>
-            <Badge variant="secondary" className="mt-3">
-              {entry.mood}
-            </Badge>
-          </CardContent>
-        </Card>
-      ))}
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm leading-relaxed">{entry.story}</p>
+              <Badge variant="secondary" className="mt-3">
+                {entry.mood}
+              </Badge>
+            </CardContent>
+          </Card>
+        );
+      })}
     </GenericListEditor>
   );
 };

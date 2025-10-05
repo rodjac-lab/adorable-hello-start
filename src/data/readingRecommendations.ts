@@ -1,4 +1,6 @@
-import type { ReadingRecommendation as BaseReadingRecommendation } from '@/types/content';
+import type { ReadingRecommendation as BaseReadingRecommendation, ContentStatus } from '@/types/content';
+import { EDITOR_STORAGE_KEYS } from '@/features/editor/constants';
+import { loadPublicationState, resolvePublicationStatus } from '@/features/publishing/publicationState';
 
 export type BookRecommendation = BaseReadingRecommendation;
 
@@ -73,4 +75,104 @@ export const readingRecommendations: BookRecommendation[] = [
   },
 ];
 
-export const getReadingRecommendations = (): BookRecommendation[] => [...readingRecommendations];
+const BOOK_STORAGE_KEY = EDITOR_STORAGE_KEYS.books;
+const isBrowser = typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+
+type ReadingStatusFilter = ContentStatus | 'all';
+
+interface GetReadingRecommendationsOptions {
+  status?: ReadingStatusFilter;
+}
+
+const canonicalBookIds = new Set(readingRecommendations.map((book) => book.id));
+
+const sanitizeStoredBooks = (raw: unknown): BookRecommendation[] => {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+
+  return raw
+    .filter((item): item is BookRecommendation => {
+      if (typeof item !== 'object' || item === null) {
+        return false;
+      }
+
+      const candidate = item as Partial<BookRecommendation>;
+      return typeof candidate.id === 'string';
+    })
+    .map((book) => ({ ...book }));
+};
+
+const loadStoredReadingRecommendations = (): BookRecommendation[] => {
+  if (!isBrowser) {
+    return [];
+  }
+
+  try {
+    const raw = window.localStorage.getItem(BOOK_STORAGE_KEY);
+    if (!raw) {
+      return [];
+    }
+
+    const parsed = JSON.parse(raw);
+    return sanitizeStoredBooks(parsed);
+  } catch (error) {
+    console.warn("⚠️ Impossible de charger les recommandations personnalisées :", error);
+    return [];
+  }
+};
+
+const shouldInclude = (status: ContentStatus, filter: ReadingStatusFilter): boolean => {
+  if (filter === 'all') {
+    return true;
+  }
+
+  return status === filter;
+};
+
+export const getReadingRecommendations = (
+  options?: GetReadingRecommendationsOptions,
+): BookRecommendation[] => {
+  const filter = options?.status ?? 'published';
+
+  if (!isBrowser) {
+    if (filter === 'draft') {
+      return [];
+    }
+    return readingRecommendations.map((book) => ({ ...book }));
+  }
+
+  const storedBooks = loadStoredReadingRecommendations();
+  const storedMap = new Map(storedBooks.map((book) => [book.id, book]));
+  const publicationState = loadPublicationState();
+
+  const results: BookRecommendation[] = [];
+
+  readingRecommendations.forEach((book) => {
+    const override = storedMap.get(book.id);
+    const candidate = override ?? book;
+    const status = resolvePublicationStatus(publicationState, 'books', book.id, {
+      defaultStatus: 'published',
+    });
+
+    if (shouldInclude(status, filter)) {
+      results.push({ ...candidate });
+    }
+  });
+
+  storedBooks.forEach((book) => {
+    if (canonicalBookIds.has(book.id)) {
+      return;
+    }
+
+    const status = resolvePublicationStatus(publicationState, 'books', book.id, {
+      defaultStatus: 'draft',
+    });
+
+    if (shouldInclude(status, filter)) {
+      results.push({ ...book });
+    }
+  });
+
+  return results;
+};

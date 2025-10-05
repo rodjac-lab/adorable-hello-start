@@ -7,10 +7,14 @@ import type { FoodExperience } from "@/data/foodExperiences";
 import { EntryForm } from "./EntryForm";
 import { GenericListEditor } from "./GenericListEditor";
 import { useEditableCollection } from "../hooks/useEditableCollection";
+import { PublicationStatusControls } from "./PublicationStatusControls";
+import type { ContentStatus } from "@/types/content";
 
 interface FoodSectionProps {
   experiences: FoodExperience[];
   onChange: (experiences: FoodExperience[]) => void;
+  getStatus: (id: string) => ContentStatus;
+  onStatusChange: (id: string, status: ContentStatus) => void;
 }
 
 type FoodExperienceDraft = {
@@ -122,7 +126,7 @@ const validateDraft = (draft: FoodExperienceDraft): string[] => {
   return errors;
 };
 
-export const FoodSection = ({ experiences, onChange }: FoodSectionProps) => {
+export const FoodSection = ({ experiences, onChange, getStatus, onStatusChange }: FoodSectionProps) => {
   const editor = useEditableCollection<FoodExperience, string, FoodExperienceDraft>({
     items: experiences,
     onChange,
@@ -255,47 +259,58 @@ export const FoodSection = ({ experiences, onChange }: FoodSectionProps) => {
         )
       }
     >
-      {editor.sortedItems.map((experience) => (
-        <Card key={experience.id}>
-          <CardHeader>
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline">{experience.type}</Badge>
-                  <Badge>{experience.price}</Badge>
+      {editor.sortedItems.map((experience) => {
+        const status = getStatus(experience.id);
+
+        return (
+          <Card key={experience.id}>
+            <CardHeader>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="space-y-2">
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="outline">{experience.type}</Badge>
+                    <Badge>{experience.price}</Badge>
+                  </div>
+                  <CardTitle>{experience.name}</CardTitle>
+                  <p className="text-sm text-muted-foreground">{experience.location}</p>
+                  <div className="text-sm" aria-label={`Note ${experience.rating} sur 5`}>
+                    {"⭐".repeat(experience.rating)}
+                  </div>
                 </div>
-                <CardTitle>{experience.name}</CardTitle>
-                <p className="text-sm text-muted-foreground">{experience.location}</p>
-                <div className="text-sm" aria-label={`Note ${experience.rating} sur 5`}>
-                  {"⭐".repeat(experience.rating)}
+                <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+                  <PublicationStatusControls
+                    status={status}
+                    onPublish={() => onStatusChange(experience.id, "published")}
+                    onUnpublish={() => onStatusChange(experience.id, "draft")}
+                  />
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => editor.startEdit(experience.id)}>
+                      ✏️ Modifier
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={() => editor.deleteItem(experience.id)}>
+                      🗑️
+                    </Button>
+                  </div>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => editor.startEdit(experience.id)}>
-                  ✏️ Modifier
-                </Button>
-                <Button size="sm" variant="destructive" onClick={() => editor.deleteItem(experience.id)}>
-                  🗑️
-                </Button>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                  Description
+                </h3>
+                <p className="text-sm leading-relaxed">{experience.description}</p>
               </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                Description
-              </h3>
-              <p className="text-sm leading-relaxed">{experience.description}</p>
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                Mon expérience
-              </h3>
-              <p className="text-sm leading-relaxed text-muted-foreground">{experience.experience}</p>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+              <div>
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                  Mon expérience
+                </h3>
+                <p className="text-sm leading-relaxed text-muted-foreground">{experience.experience}</p>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
     </GenericListEditor>
   );
 };

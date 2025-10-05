@@ -1,4 +1,6 @@
-import type { FoodExperience as BaseFoodExperience } from '@/types/content';
+import type { FoodExperience as BaseFoodExperience, ContentStatus } from '@/types/content';
+import { EDITOR_STORAGE_KEYS } from '@/features/editor/constants';
+import { loadPublicationState, resolvePublicationStatus } from '@/features/publishing/publicationState';
 
 export type FoodExperience = BaseFoodExperience;
 
@@ -53,4 +55,102 @@ export const foodExperiences: FoodExperience[] = [
   },
 ];
 
-export const getFoodExperiences = (): FoodExperience[] => [...foodExperiences];
+const FOOD_STORAGE_KEY = EDITOR_STORAGE_KEYS.food;
+const isBrowser = typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+
+type FoodExperienceStatusFilter = ContentStatus | 'all';
+
+interface GetFoodExperiencesOptions {
+  status?: FoodExperienceStatusFilter;
+}
+
+const canonicalFoodIds = new Set(foodExperiences.map((experience) => experience.id));
+
+const sanitizeStoredExperiences = (raw: unknown): FoodExperience[] => {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+
+  return raw
+    .filter((item): item is FoodExperience => {
+      if (typeof item !== 'object' || item === null) {
+        return false;
+      }
+
+      const candidate = item as Partial<FoodExperience>;
+      return typeof candidate.id === 'string';
+    })
+    .map((experience) => ({ ...experience }));
+};
+
+const loadStoredFoodExperiences = (): FoodExperience[] => {
+  if (!isBrowser) {
+    return [];
+  }
+
+  try {
+    const raw = window.localStorage.getItem(FOOD_STORAGE_KEY);
+    if (!raw) {
+      return [];
+    }
+
+    const parsed = JSON.parse(raw);
+    return sanitizeStoredExperiences(parsed);
+  } catch (error) {
+    console.warn('⚠️ Impossible de charger les expériences culinaires personnalisées :', error);
+    return [];
+  }
+};
+
+const shouldInclude = (status: ContentStatus, filter: FoodExperienceStatusFilter): boolean => {
+  if (filter === 'all') {
+    return true;
+  }
+
+  return status === filter;
+};
+
+export const getFoodExperiences = (options?: GetFoodExperiencesOptions): FoodExperience[] => {
+  const filter = options?.status ?? 'published';
+
+  if (!isBrowser) {
+    if (filter === 'draft') {
+      return [];
+    }
+    return foodExperiences.map((experience) => ({ ...experience }));
+  }
+
+  const storedExperiences = loadStoredFoodExperiences();
+  const storedMap = new Map(storedExperiences.map((experience) => [experience.id, experience]));
+  const publicationState = loadPublicationState();
+
+  const results: FoodExperience[] = [];
+
+  foodExperiences.forEach((experience) => {
+    const override = storedMap.get(experience.id);
+    const candidate = override ?? experience;
+    const status = resolvePublicationStatus(publicationState, 'food', experience.id, {
+      defaultStatus: 'published',
+    });
+
+    if (shouldInclude(status, filter)) {
+      results.push({ ...candidate });
+    }
+  });
+
+  storedExperiences.forEach((experience) => {
+    if (canonicalFoodIds.has(experience.id)) {
+      return;
+    }
+
+    const status = resolvePublicationStatus(publicationState, 'food', experience.id, {
+      defaultStatus: 'draft',
+    });
+
+    if (shouldInclude(status, filter)) {
+      results.push({ ...experience });
+    }
+  });
+
+  return results;
+};

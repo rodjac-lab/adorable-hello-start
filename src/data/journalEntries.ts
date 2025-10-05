@@ -1,4 +1,7 @@
 import type { PersistedJournalEntry } from '@/types/journal';
+import type { ContentStatus } from '@/types/content';
+import { EDITOR_STORAGE_KEYS } from '@/features/editor/constants';
+import { loadPublicationState, resolvePublicationStatus } from '@/features/publishing/publicationState';
 
 export type JournalEntry = PersistedJournalEntry;
 
@@ -44,7 +47,105 @@ export const journalEntries: JournalEntry[] = [
   },
 ];
 
-export const getJournalEntries = (): JournalEntry[] => [...journalEntries];
+const JOURNAL_STORAGE_KEY = EDITOR_STORAGE_KEYS.journal;
+const isBrowser = typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+
+type JournalStatusFilter = ContentStatus | 'all';
+
+interface GetJournalEntriesOptions {
+  status?: JournalStatusFilter;
+}
+
+const canonicalJournalDays = new Set(journalEntries.map((entry) => entry.day.toString()));
+
+const sanitizeStoredEntries = (raw: unknown): JournalEntry[] => {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+
+  return raw
+    .filter((item): item is JournalEntry => {
+      if (typeof item !== 'object' || item === null) {
+        return false;
+      }
+
+      const candidate = item as Partial<JournalEntry>;
+      return typeof candidate.day === 'number';
+    })
+    .map((entry) => ({ ...entry }));
+};
+
+const loadStoredJournalEntries = (): JournalEntry[] => {
+  if (!isBrowser) {
+    return [];
+  }
+
+  try {
+    const raw = window.localStorage.getItem(JOURNAL_STORAGE_KEY);
+    if (!raw) {
+      return [];
+    }
+
+    const parsed = JSON.parse(raw);
+    return sanitizeStoredEntries(parsed);
+  } catch (error) {
+    console.warn('⚠️ Impossible de charger les entrées personnalisées du journal :', error);
+    return [];
+  }
+};
+
+const shouldInclude = (status: ContentStatus, filter: JournalStatusFilter): boolean => {
+  if (filter === 'all') {
+    return true;
+  }
+
+  return status === filter;
+};
+
+export const getJournalEntries = (options?: GetJournalEntriesOptions): JournalEntry[] => {
+  const filter = options?.status ?? 'published';
+
+  if (!isBrowser) {
+    if (filter === 'draft') {
+      return [];
+    }
+    return journalEntries.map((entry) => ({ ...entry }));
+  }
+
+  const storedEntries = loadStoredJournalEntries();
+  const storedMap = new Map(storedEntries.map((entry) => [entry.day, entry]));
+  const publicationState = loadPublicationState();
+
+  const results: JournalEntry[] = [];
+
+  journalEntries.forEach((entry) => {
+    const override = storedMap.get(entry.day);
+    const candidate = override ?? entry;
+    const status = resolvePublicationStatus(publicationState, 'journal', entry.day.toString(), {
+      defaultStatus: 'published',
+    });
+
+    if (shouldInclude(status, filter)) {
+      results.push({ ...candidate });
+    }
+  });
+
+  storedEntries.forEach((entry) => {
+    if (canonicalJournalDays.has(entry.day.toString())) {
+      return;
+    }
+
+    const status = resolvePublicationStatus(publicationState, 'journal', entry.day.toString(), {
+      defaultStatus: 'draft',
+    });
+
+    if (shouldInclude(status, filter)) {
+      results.push({ ...entry });
+    }
+  });
+
+  return results.sort((a, b) => a.day - b.day);
+};
 
 export const getJournalEntry = (day: number): JournalEntry | undefined =>
-  journalEntries.find((entry) => entry.day === day);
+  getJournalEntries({ status: 'all' }).find((entry) => entry.day === day);

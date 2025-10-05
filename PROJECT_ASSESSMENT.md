@@ -86,10 +86,13 @@ Consolider l'architecture afin de rendre la création de contenu stable, typée 
 - ✅ Création de composants mutualisés (`GenericListEditor`, `EntryForm`) et du hook `useEditableCollection<T>` pour orchestrer les opérations CRUD.
 - ✅ Les sections Journal/Gastronomie/Lectures consomment désormais le hook partagé avec validations typées et formulaires modulaires.
 - ✅ Le chargement initial exploite les jeux de données canoniques (`src/data`) avec fallback localStorage et export TypeScript factorisé.
-- 🔜 Harmoniser l'UX (feedback utilisateur, toasts) et préparer l'extraction du workflow de publication Studio.
+- ✅ Harmonisation de l'UX : toasts de sauvegarde/export, indicateurs d'état et verrouillage des actions tant que les contenus ne sont pas synchronisés.
+- ✅ Préparation du workflow de publication avec `usePublicationState` et les contrôles `PublicationStatusControls` partagés.
+- 🔜 Brancher ce workflow côté Studio (actions Publier/Brouillon, diagnostics unifiés) avant de clôturer l'étape.
 
 ## Étape 4 — Nettoyage des stores de contenu (en cours)
 - ✅ Déplacement des contenus canoniques (journal, gastronomie, lectures, cartes) dans `src/data/` avec types partagés (`src/types/content.ts`).
 - ✅ Unification des structures `FoodExperience` et `ReadingRecommendation` entre le store, le Studio et l'éditeur avec sérialisation cohérente.
 - ✅ Rafraîchissement des pages publiques (Food & Recommendations) et du Studio pour consommer les nouvelles données typées.
-- 🔜 Introduire la notion de statut (draft/published) dans les stores et propager aux pages publiques.
+- ✅ Introduction des statuts de publication (draft/published) persistés dans `localStorage` et filtrage des pages publiques via les sélecteurs unifiés.
+- 🔜 Aligner le `contentStore` et le Studio sur ce nouvel état (actions de publication, diagnostics) puis documenter le flux complet.

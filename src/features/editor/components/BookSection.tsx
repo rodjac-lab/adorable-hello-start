@@ -7,10 +7,14 @@ import type { BookRecommendation } from "@/data/readingRecommendations";
 import { EntryForm } from "./EntryForm";
 import { GenericListEditor } from "./GenericListEditor";
 import { useEditableCollection } from "../hooks/useEditableCollection";
+import { PublicationStatusControls } from "./PublicationStatusControls";
+import type { ContentStatus } from "@/types/content";
 
 interface BookSectionProps {
   books: BookRecommendation[];
   onChange: (books: BookRecommendation[]) => void;
+  getStatus: (id: string) => ContentStatus;
+  onStatusChange: (id: string, status: ContentStatus) => void;
 }
 
 type BookDraft = {
@@ -113,7 +117,7 @@ const validateDraft = (draft: BookDraft): string[] => {
   return errors;
 };
 
-export const BookSection = ({ books, onChange }: BookSectionProps) => {
+export const BookSection = ({ books, onChange, getStatus, onStatusChange }: BookSectionProps) => {
   const editor = useEditableCollection<BookRecommendation, string, BookDraft>({
     items: books,
     onChange,
@@ -230,51 +234,62 @@ export const BookSection = ({ books, onChange }: BookSectionProps) => {
         )
       }
     >
-      {editor.sortedItems.map((book) => (
-        <Card key={book.id}>
-          <CardHeader>
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">{book.type}</Badge>
-                  <span aria-label={`Note ${book.rating} sur 5`}>{"⭐".repeat(book.rating)}</span>
+      {editor.sortedItems.map((book) => {
+        const status = getStatus(book.id);
+
+        return (
+          <Card key={book.id}>
+            <CardHeader>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">{book.type}</Badge>
+                    <span aria-label={`Note ${book.rating} sur 5`}>{"⭐".repeat(book.rating)}</span>
+                  </div>
+                  <CardTitle>{book.title}</CardTitle>
+                  <p className="text-sm text-muted-foreground">par {book.author}</p>
                 </div>
-                <CardTitle>{book.title}</CardTitle>
-                <p className="text-sm text-muted-foreground">par {book.author}</p>
-              </div>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => editor.startEdit(book.id)}>
-                  ✏️ Modifier
-                </Button>
-                <Button size="sm" variant="destructive" onClick={() => editor.deleteItem(book.id)}>
-                  🗑️
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm leading-relaxed">{book.description}</p>
-            <Card className="bg-secondary/10 border-secondary/20">
-              <CardContent className="pt-4">
-                <div className="flex items-start gap-2">
-                  <span className="text-secondary text-lg">💭</span>
-                  <div>
-                    <p className="font-medium text-secondary mb-1">Pourquoi le lire</p>
-                    <p className="text-sm text-muted-foreground leading-relaxed">{book.why}</p>
+                <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+                  <PublicationStatusControls
+                    status={status}
+                    onPublish={() => onStatusChange(book.id, "published")}
+                    onUnpublish={() => onStatusChange(book.id, "draft")}
+                  />
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => editor.startEdit(book.id)}>
+                      ✏️ Modifier
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={() => editor.deleteItem(book.id)}>
+                      🗑️
+                    </Button>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-            {book.amazon && (
-              <Button variant="outline" className="w-full" asChild>
-                <a href={book.amazon} target="_blank" rel="noopener noreferrer">
-                  📖 Voir en ligne
-                </a>
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      ))}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm leading-relaxed">{book.description}</p>
+              <Card className="bg-secondary/10 border-secondary/20">
+                <CardContent className="pt-4">
+                  <div className="flex items-start gap-2">
+                    <span className="text-secondary text-lg">💭</span>
+                    <div>
+                      <p className="font-medium text-secondary mb-1">Pourquoi le lire</p>
+                      <p className="text-sm text-muted-foreground leading-relaxed">{book.why}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              {book.amazon && (
+                <Button variant="outline" className="w-full" asChild>
+                  <a href={book.amazon} target="_blank" rel="noopener noreferrer">
+                    📖 Voir en ligne
+                  </a>
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })}
     </GenericListEditor>
   );
 };

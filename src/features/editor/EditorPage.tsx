@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,13 +8,22 @@ import type { FoodExperience } from "@/data/foodExperiences";
 import { foodExperiences as canonicalFoodExperiences } from "@/data/foodExperiences";
 import type { BookRecommendation } from "@/data/readingRecommendations";
 import { readingRecommendations as canonicalReadingRecommendations } from "@/data/readingRecommendations";
+import { useToast } from "@/hooks/use-toast";
+import type { ContentStatus } from "@/types/content";
+import {
+  EDITOR_STORAGE_KEYS,
+  EDITOR_STORAGE_VERSION,
+  getEditorBackupKey,
+  getEditorVersionKey,
+} from "./constants";
+import { usePublicationState } from "@/features/publishing/usePublicationState";
 import { JournalSection } from "./components/JournalSection";
 import { FoodSection } from "./components/FoodSection";
 import { BookSection } from "./components/BookSection";
 
-const JOURNAL_STORAGE_KEY = "jordan-journal-entries";
-const FOOD_STORAGE_KEY = "jordan-food-experiences";
-const BOOK_STORAGE_KEY = "jordan-book-recommendations";
+const JOURNAL_STORAGE_KEY = EDITOR_STORAGE_KEYS.journal;
+const FOOD_STORAGE_KEY = EDITOR_STORAGE_KEYS.food;
+const BOOK_STORAGE_KEY = EDITOR_STORAGE_KEYS.books;
 
 const isBrowser = typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 
@@ -37,15 +46,101 @@ const loadCollection = <T,>(key: string, fallback: T[]): T[] => {
   }
 };
 
-const saveCollection = <T,>(key: string, value: T[]): void => {
-  if (!isBrowser) {
+interface SaveCollectionResult {
+  success: boolean;
+  quotaExceeded: boolean;
+  error?: Error;
+}
+
+const STORAGE_BACKUPS: Record<string, { primary: string; secondary: string }> = {
+  [JOURNAL_STORAGE_KEY]: {
+    primary: getEditorBackupKey("journal", "primary"),
+    secondary: getEditorBackupKey("journal", "secondary"),
+  },
+  [FOOD_STORAGE_KEY]: {
+    primary: getEditorBackupKey("food", "primary"),
+    secondary: getEditorBackupKey("food", "secondary"),
+  },
+  [BOOK_STORAGE_KEY]: {
+    primary: getEditorBackupKey("books", "primary"),
+    secondary: getEditorBackupKey("books", "secondary"),
+  },
+};
+
+const STORAGE_VERSIONS: Record<string, string> = {
+  [JOURNAL_STORAGE_KEY]: getEditorVersionKey("journal"),
+  [FOOD_STORAGE_KEY]: getEditorVersionKey("food"),
+  [BOOK_STORAGE_KEY]: getEditorVersionKey("books"),
+};
+
+const isQuotaExceededError = (error: unknown): boolean => {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  if (error instanceof DOMException) {
+    return error.name === "QuotaExceededError" || error.code === 22;
+  }
+
+  return false;
+};
+
+const toError = (error: unknown): Error => {
+  if (error instanceof Error) {
+    return error;
+  }
+
+  return new Error(String(error));
+};
+
+const rotateBackupsIfNeeded = (key: string, payload: string) => {
+  const config = STORAGE_BACKUPS[key];
+  if (!config) {
     return;
   }
 
+  const existing = window.localStorage.getItem(key);
+  if (!existing || existing === payload) {
+    return;
+  }
+
+  const previousBackup = window.localStorage.getItem(config.primary);
+  if (previousBackup) {
+    window.localStorage.setItem(config.secondary, previousBackup);
+  }
+
+  window.localStorage.setItem(config.primary, existing);
+};
+
+const saveCollection = <T,>(key: string, value: T[]): SaveCollectionResult => {
+  if (!isBrowser) {
+    return {
+      success: false,
+      quotaExceeded: false,
+      error: new Error("localStorage est indisponible dans cet environnement."),
+    };
+  }
+
+  const payload = JSON.stringify(value);
+
   try {
-    window.localStorage.setItem(key, JSON.stringify(value));
+    rotateBackupsIfNeeded(key, payload);
+    window.localStorage.setItem(key, payload);
+
+    const versionKey = STORAGE_VERSIONS[key];
+    if (versionKey) {
+      window.localStorage.setItem(versionKey, EDITOR_STORAGE_VERSION);
+    }
+
+    return { success: true, quotaExceeded: false };
   } catch (error) {
-    console.error(`Erreur lors de la sauvegarde de ${key} dans le localStorage`, error);
+    const normalizedError = toError(error);
+    console.error(`Erreur lors de la sauvegarde de ${key} dans le localStorage`, normalizedError);
+    return {
+      success: false,
+      quotaExceeded: isQuotaExceededError(error),
+      error: normalizedError,
+    };
   }
 };
 
@@ -109,6 +204,8 @@ export const getReadingRecommendations = () => readingRecommendations;
 `;
 
 const EditorPage = () => {
+  const { toast } = useToast();
+
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>(() =>
     loadCollection(
       JOURNAL_STORAGE_KEY,
@@ -128,23 +225,249 @@ const EditorPage = () => {
     ),
   );
 
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const { syncCollectionEntries, setStatus, getStatus } = usePublicationState();
+
+  const canonicalJournalIds = useMemo(
+    () => new Set(canonicalJournalEntries.map((entry) => entry.day.toString())),
+    [],
+  );
+  const canonicalFoodIds = useMemo(
+    () => new Set(canonicalFoodExperiences.map((experience) => experience.id)),
+    [],
+  );
+  const canonicalBookIds = useMemo(
+    () => new Set(canonicalReadingRecommendations.map((book) => book.id)),
+    [],
+  );
+
+  useEffect(() => {
+    syncCollectionEntries(
+      "journal",
+      journalEntries.map((entry) => entry.day.toString()),
+      canonicalJournalIds,
+    );
+  }, [journalEntries, canonicalJournalIds, syncCollectionEntries]);
+
+  useEffect(() => {
+    syncCollectionEntries(
+      "food",
+      foodExperiences.map((experience) => experience.id),
+      canonicalFoodIds,
+    );
+  }, [foodExperiences, canonicalFoodIds, syncCollectionEntries]);
+
+  useEffect(() => {
+    syncCollectionEntries(
+      "books",
+      bookRecommendations.map((book) => book.id),
+      canonicalBookIds,
+    );
+  }, [bookRecommendations, canonicalBookIds, syncCollectionEntries]);
+
+  const markDirty = useCallback(() => {
+    setHasUnsavedChanges(true);
+  }, []);
+
+  const handleJournalChange = useCallback((entries: JournalEntry[]) => {
+    setJournalEntries(entries);
+    markDirty();
+  }, [markDirty]);
+
+  const handleFoodChange = useCallback((experiences: FoodExperience[]) => {
+    setFoodExperiences(experiences);
+    markDirty();
+  }, [markDirty]);
+
+  const handleBookChange = useCallback((books: BookRecommendation[]) => {
+    setBookRecommendations(books);
+    markDirty();
+  }, [markDirty]);
+
   const handleSave = useCallback(() => {
-    saveCollection(JOURNAL_STORAGE_KEY, journalEntries);
-    saveCollection(FOOD_STORAGE_KEY, foodExperiences);
-    saveCollection(BOOK_STORAGE_KEY, bookRecommendations);
-  }, [bookRecommendations, foodExperiences, journalEntries]);
+    if (!isBrowser) {
+      toast({
+        title: "Sauvegarde indisponible",
+        description: "localStorage n'est pas accessible dans cet environnement.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const results: SaveCollectionResult[] = [
+        saveCollection(JOURNAL_STORAGE_KEY, journalEntries),
+        saveCollection(FOOD_STORAGE_KEY, foodExperiences),
+        saveCollection(BOOK_STORAGE_KEY, bookRecommendations),
+      ];
+
+      const allSucceeded = results.every((result) => result.success);
+
+      if (allSucceeded) {
+        setHasUnsavedChanges(false);
+        setLastSavedAt(new Date());
+        toast({
+          title: "Sauvegarde réussie",
+          description: "Vos contenus sont enregistrés dans ce navigateur.",
+        });
+        return;
+      }
+
+      const quotaExceeded = results.some((result) => result.quotaExceeded);
+      const firstError = results.find((result) => result.error)?.error;
+
+      toast({
+        title: quotaExceeded ? "Quota de stockage atteint" : "Impossible d'enregistrer",
+        description: quotaExceeded
+          ? "Le navigateur n'a plus d'espace disponible. Exportez ou supprimez du contenu avant de réessayer."
+          : firstError?.message ?? "Une erreur inattendue est survenue lors de la sauvegarde.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  }, [bookRecommendations, foodExperiences, journalEntries, toast]);
 
   const handleExport = useCallback(() => {
-    downloadFile("journalEntries.ts", serializeJournalEntries(journalEntries));
-    downloadFile("foodExperiences.ts", serializeFoodExperiences(foodExperiences));
-    downloadFile("readingRecommendations.ts", serializeBookRecommendations(bookRecommendations));
-  }, [bookRecommendations, foodExperiences, journalEntries]);
+    if (!isBrowser) {
+      toast({
+        title: "Export impossible",
+        description: "localStorage n'est pas accessible dans cet environnement.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsExporting(true);
+
+    try {
+      downloadFile("journalEntries.ts", serializeJournalEntries(journalEntries));
+      downloadFile("foodExperiences.ts", serializeFoodExperiences(foodExperiences));
+      downloadFile("readingRecommendations.ts", serializeBookRecommendations(bookRecommendations));
+      toast({
+        title: "Export généré",
+        description: "Les fichiers TypeScript ont été téléchargés.",
+      });
+    } catch (error) {
+      const normalizedError = toError(error);
+      toast({
+        title: "Export interrompu",
+        description: normalizedError.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  }, [bookRecommendations, foodExperiences, journalEntries, toast]);
+
+  const getJournalStatus = useCallback(
+    (day: number): ContentStatus => {
+      const id = day.toString();
+      const defaultStatus: ContentStatus = canonicalJournalIds.has(id) ? "published" : "draft";
+      return getStatus("journal", id, defaultStatus);
+    },
+    [canonicalJournalIds, getStatus],
+  );
+
+  const getFoodStatus = useCallback(
+    (id: string): ContentStatus => {
+      const defaultStatus: ContentStatus = canonicalFoodIds.has(id) ? "published" : "draft";
+      return getStatus("food", id, defaultStatus);
+    },
+    [canonicalFoodIds, getStatus],
+  );
+
+  const getBookStatus = useCallback(
+    (id: string): ContentStatus => {
+      const defaultStatus: ContentStatus = canonicalBookIds.has(id) ? "published" : "draft";
+      return getStatus("books", id, defaultStatus);
+    },
+    [canonicalBookIds, getStatus],
+  );
+
+  const handleJournalStatusChange = useCallback(
+    (day: number, status: ContentStatus) => {
+      const id = day.toString();
+      setStatus("journal", id, status);
+
+      const entry = journalEntries.find((item) => item.day === day);
+      const description = entry ? `${entry.title} (Jour ${entry.day})` : `Jour ${day}`;
+
+      toast({
+        title: status === "published" ? "Entrée publiée" : "Entrée en brouillon",
+        description,
+      });
+    },
+    [journalEntries, setStatus, toast],
+  );
+
+  const handleFoodStatusChange = useCallback(
+    (id: string, status: ContentStatus) => {
+      setStatus("food", id, status);
+
+      const experience = foodExperiences.find((item) => item.id === id);
+      toast({
+        title: status === "published" ? "Expérience publiée" : "Expérience en brouillon",
+        description: experience ? experience.name : id,
+      });
+    },
+    [foodExperiences, setStatus, toast],
+  );
+
+  const handleBookStatusChange = useCallback(
+    (id: string, status: ContentStatus) => {
+      setStatus("books", id, status);
+
+      const book = bookRecommendations.find((item) => item.id === id);
+      toast({
+        title: status === "published" ? "Recommandation publiée" : "Recommandation en brouillon",
+        description: book ? book.title : id,
+      });
+    },
+    [bookRecommendations, setStatus, toast],
+  );
+
+  const journalDraftCount = useMemo(
+    () =>
+      journalEntries.reduce((count, entry) => (getJournalStatus(entry.day) === "draft" ? count + 1 : count), 0),
+    [journalEntries, getJournalStatus],
+  );
+
+  const foodDraftCount = useMemo(
+    () =>
+      foodExperiences.reduce((count, experience) => (getFoodStatus(experience.id) === "draft" ? count + 1 : count), 0),
+    [foodExperiences, getFoodStatus],
+  );
+
+  const bookDraftCount = useMemo(
+    () =>
+      bookRecommendations.reduce((count, book) => (getBookStatus(book.id) === "draft" ? count + 1 : count), 0),
+    [bookRecommendations, getBookStatus],
+  );
 
   const tabCounts = {
-    journal: journalEntries.length,
-    food: foodExperiences.length,
-    books: bookRecommendations.length,
+    journal: { total: journalEntries.length, drafts: journalDraftCount },
+    food: { total: foodExperiences.length, drafts: foodDraftCount },
+    books: { total: bookRecommendations.length, drafts: bookDraftCount },
   };
+
+  const renderDraftBadge = useCallback((count: number) => {
+    if (count === 0) {
+      return null;
+    }
+
+    return (
+      <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900 dark:bg-amber-900/40 dark:text-amber-100">
+        {count} brouillon{count > 1 ? "s" : ""}
+      </span>
+    );
+  }, []);
 
   return (
     <>
@@ -157,30 +480,89 @@ const EditorPage = () => {
               Créez et gérez le contenu de votre carnet de voyage
             </p>
             <div className="flex justify-center gap-4">
-              <Button onClick={handleSave} variant="outline">
-                💾 Sauvegarder
+              <Button
+                onClick={handleSave}
+                variant="outline"
+                disabled={isSaving || !hasUnsavedChanges}
+              >
+                {isSaving ? "⏳ Sauvegarde..." : "💾 Sauvegarder"}
               </Button>
-              <Button onClick={handleExport}>📥 Exporter les fichiers</Button>
+              <Button onClick={handleExport} disabled={isExporting}>
+                {isExporting ? "Préparation..." : "📥 Exporter les fichiers"}
+              </Button>
+            </div>
+            <div className="mt-4 flex flex-col items-center gap-1 text-sm text-muted-foreground">
+              {hasUnsavedChanges ? (
+                <span className="flex items-center gap-2 text-amber-600">
+                  <span aria-hidden>⚠️</span>
+                  Modifications non sauvegardées
+                </span>
+              ) : (
+                <span className="flex items-center gap-2 text-emerald-600">
+                  <span aria-hidden>✅</span>
+                  Toutes les modifications sont synchronisées
+                </span>
+              )}
+              {lastSavedAt && (
+                <span>
+                  Dernière sauvegarde :
+                  {" "}
+                  {lastSavedAt.toLocaleTimeString("fr-FR", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              )}
             </div>
           </div>
 
           <Tabs defaultValue="journal" className="mx-auto max-w-4xl">
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="journal">📖 Journal ({tabCounts.journal})</TabsTrigger>
-              <TabsTrigger value="food">🍽️ Gastronomie ({tabCounts.food})</TabsTrigger>
-              <TabsTrigger value="books">📚 Lectures ({tabCounts.books})</TabsTrigger>
+              <TabsTrigger value="journal">
+                <span className="flex items-center justify-center gap-2">
+                  📖 Journal ({tabCounts.journal.total})
+                  {renderDraftBadge(tabCounts.journal.drafts)}
+                </span>
+              </TabsTrigger>
+              <TabsTrigger value="food">
+                <span className="flex items-center justify-center gap-2">
+                  🍽️ Gastronomie ({tabCounts.food.total})
+                  {renderDraftBadge(tabCounts.food.drafts)}
+                </span>
+              </TabsTrigger>
+              <TabsTrigger value="books">
+                <span className="flex items-center justify-center gap-2">
+                  📚 Lectures ({tabCounts.books.total})
+                  {renderDraftBadge(tabCounts.books.drafts)}
+                </span>
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="journal">
-              <JournalSection entries={journalEntries} onChange={setJournalEntries} />
+              <JournalSection
+                entries={journalEntries}
+                onChange={handleJournalChange}
+                getStatus={getJournalStatus}
+                onStatusChange={handleJournalStatusChange}
+              />
             </TabsContent>
 
             <TabsContent value="food">
-              <FoodSection experiences={foodExperiences} onChange={setFoodExperiences} />
+              <FoodSection
+                experiences={foodExperiences}
+                onChange={handleFoodChange}
+                getStatus={getFoodStatus}
+                onStatusChange={handleFoodStatusChange}
+              />
             </TabsContent>
 
             <TabsContent value="books">
-              <BookSection books={bookRecommendations} onChange={setBookRecommendations} />
+              <BookSection
+                books={bookRecommendations}
+                onChange={handleBookChange}
+                getStatus={getBookStatus}
+                onStatusChange={handleBookStatusChange}
+              />
             </TabsContent>
           </Tabs>
         </div>
