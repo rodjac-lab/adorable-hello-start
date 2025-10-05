@@ -24,8 +24,10 @@ export interface ReadingRecommendation {
 }
 
 export interface PlaceReference {
+  id: string;
   day: number;
   name: string;
   summary: string;
   coordinates: [number, number];
+  mediaAssetIds?: string[];
 }

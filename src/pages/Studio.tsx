@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { foodExperiences as canonicalFoodExperiences } from "@/data/foodExperiences";
 import { readingRecommendations as canonicalReadingRecommendations } from "@/data/readingRecommendations";
 import { journalEntries as canonicalJournalEntries } from "@/data/journalEntries";
+import { placeReferences as canonicalPlaceReferences } from "@/data/placeReferences";
 import type { FoodExperience, ReadingRecommendation } from "@/types/content";
 import { usePublicationState } from "@/features/publishing/usePublicationState";
 import { EDITOR_STORAGE_KEYS } from "@/features/editor/constants";
@@ -33,6 +34,8 @@ const BOOK_STORAGE_KEY = EDITOR_STORAGE_KEYS.books;
 const canonicalFoodIds = new Set(canonicalFoodExperiences.map((experience) => experience.id));
 const canonicalBookIds = new Set(canonicalReadingRecommendations.map((book) => book.id));
 const canonicalJournalIds = new Set(canonicalJournalEntries.map((entry) => entry.day.toString()));
+const canonicalPlaceIds = new Set(canonicalPlaceReferences.map((place) => place.id));
+const canonicalPlaceIdList = canonicalPlaceReferences.map((place) => place.id);
 
 const generateId = () => {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -204,6 +207,10 @@ const Studio = () => {
       canonicalBookIds,
     );
   }, [readingList, syncCollectionEntries]);
+
+  useEffect(() => {
+    syncCollectionEntries("map", canonicalPlaceIdList, canonicalPlaceIds);
+  }, [syncCollectionEntries]);
 
   const handleSelectEntry = useCallback((entry: JournalEntry) => {
     setMode("edit");

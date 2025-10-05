@@ -114,4 +114,4 @@ Consolider l'architecture afin de rendre la création de contenu stable, typée 
 - ✅ Tests Vitest pour la persistance média (ordre, normalisation, helpers de taille).
 - ✅ Journal et éditeur reliés à la médiathèque : sélection des images dans le Studio, stockage des `mediaAssetIds` et résolution automatique côté site public.
 - ✅ Tableau de bord d'usage dans l'onglet Médiathèque pour suivre les médias référencés et détecter les visuels orphelins.
-- 🔜 Étendre l'association média aux cartes (`placeReferences`) et enrichir les diagnostics de volumétrie côté cartes.
+- ✅ Association des lieux de la carte aux médias de la bibliothèque, synchronisée avec les statuts de publication et intégrée aux diagnostics d'usage.

@@ -1,7 +1,7 @@
 import type { ContentStatus } from "@/types/content";
 import { logger } from "@/lib/logger";
 
-export type PublicationCollection = "journal" | "food" | "books";
+export type PublicationCollection = "journal" | "food" | "books" | "map";
 
 export interface PublicationMetadata {
   status: ContentStatus;
@@ -12,6 +12,7 @@ export interface PublicationState {
   journal: Record<string, PublicationMetadata>;
   food: Record<string, PublicationMetadata>;
   books: Record<string, PublicationMetadata>;
+  map: Record<string, PublicationMetadata>;
 }
 
 const isBrowser = typeof window !== "undefined" && typeof window.localStorage !== "undefined";
@@ -24,6 +25,7 @@ const createDefaultState = (): PublicationState => ({
   journal: {},
   food: {},
   books: {},
+  map: {},
 });
 
 const cloneCollection = (
@@ -39,6 +41,7 @@ export const clonePublicationState = (state: PublicationState): PublicationState
   journal: cloneCollection(state.journal),
   food: cloneCollection(state.food),
   books: cloneCollection(state.books),
+  map: cloneCollection(state.map),
 });
 
 const isRecord = (value: unknown): value is Record<string, unknown> => {
@@ -89,6 +92,7 @@ export const loadPublicationState = (): PublicationState => {
       journal: normalizeCollection(parsed.journal),
       food: normalizeCollection(parsed.food),
       books: normalizeCollection(parsed.books),
+      map: normalizeCollection(parsed.map),
     };
   } catch (error) {
     logger.warn("⚠️ Impossible de lire l'état de publication", error);
