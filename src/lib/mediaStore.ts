@@ -1,4 +1,10 @@
 import { compressImageUrl } from "./imageCompression";
+import { logger } from "@/lib/logger";
+import {
+  createJsonLocalStorageClient,
+  type JsonLocalStorageClient,
+  type StorageWriteResult,
+} from "@/storage/localStorageClient";
 
 export type MediaAssetSource = "upload" | "external" | "generated";
 
@@ -16,6 +22,8 @@ export interface MediaAsset {
   lastUsedAt?: string;
   checksum?: string;
   source: MediaAssetSource;
+  description?: string;
+  tags?: string[];
 }
 
 export interface MediaLibraryUsage {
@@ -32,7 +40,22 @@ export interface MediaLibraryState {
   usage: MediaLibraryUsage;
 }
 
+export interface MediaLibraryPersistenceResult {
+  state: MediaLibraryState;
+  writeResult: StorageWriteResult | null;
+}
+
+export interface AddMediaAssetsResult extends MediaLibraryPersistenceResult {
+  addedCount: number;
+  skippedCount: number;
+}
+
 const STORAGE_KEY = "mediaLibraryAssets/v1";
+const STORAGE_BACKUP_PRIMARY = `${STORAGE_KEY}/backup1`;
+const STORAGE_BACKUP_SECONDARY = `${STORAGE_KEY}/backup2`;
+const STORAGE_VERSION_KEY = `${STORAGE_KEY}/version`;
+const STORAGE_VERSION = "1";
+
 const DEFAULT_MAX_ASSETS = 200;
 const DEFAULT_MAX_BYTES = 50 * 1024 * 1024; // 50MB
 
@@ -41,29 +64,192 @@ export const DEFAULT_MEDIA_QUOTA: Pick<MediaLibraryUsage, "maxAssets" | "maxByte
   maxBytes: DEFAULT_MAX_BYTES,
 };
 
+export const MEDIA_LIBRARY_UPDATED_EVENT = "media-library:change";
+
 const isBrowser = typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 
-const safeParse = (value: string | null): MediaAsset[] => {
+const mediaClient: JsonLocalStorageClient<MediaAsset[]> | null = isBrowser
+  ? createJsonLocalStorageClient<MediaAsset[]>({
+      storageKey: STORAGE_KEY,
+      backupKeys: {
+        primary: STORAGE_BACKUP_PRIMARY,
+        secondary: STORAGE_BACKUP_SECONDARY,
+      },
+      versionKey: STORAGE_VERSION_KEY,
+      currentVersion: STORAGE_VERSION,
+    })
+  : null;
+
+const DEFAULT_MEDIA_ASSETS: MediaAsset[] = [
+  {
+    id: "media-seed-1",
+    name: "Coucher de soleil sur Wadi Rum",
+    type: "image/jpeg",
+    url: "/lovable-uploads/wadi-rum-sunset.jpg",
+    size: 420_000,
+    createdAt: "2023-12-01T18:30:00.000Z",
+    updatedAt: "2023-12-01T18:30:00.000Z",
+    description: "Panorama capturé depuis un camp bédouin, idéal pour illustrer la section Médias.",
+    tags: ["wadi-rum", "coucher-de-soleil", "paysage"],
+    source: "generated",
+  },
+  {
+    id: "media-seed-2",
+    name: "Ambiance du souk d'Amman",
+    type: "audio/mpeg",
+    url: "/lovable-uploads/amman-souk.mp3",
+    size: 2_300_000,
+    createdAt: "2023-12-02T10:00:00.000Z",
+    updatedAt: "2023-12-02T10:00:00.000Z",
+    description: "Ambiance sonore enregistrée sur place, parfaite pour enrichir les stories Instagram ou TikTok.",
+    tags: ["amman", "souk", "ambiance"],
+    source: "generated",
+  },
+  {
+    id: "media-journal-day-1-cover",
+    name: "Journal — Arrivée à Amman",
+    type: "image/png",
+    url: "/lovable-uploads/ab7525ee-de5e-4ec5-bd8a-474c543dff10.png",
+    size: 512_000,
+    createdAt: "2024-01-15T06:00:00.000Z",
+    updatedAt: "2024-01-15T06:00:00.000Z",
+    description: "Vue sur les toits d'Amman à l'aube, utilisée comme image d'ouverture du journal.",
+    tags: ["amman", "journal", "jour-1"],
+    source: "generated",
+  },
+  {
+    id: "media-journal-day-1-detail",
+    name: "Journal — Détails de la capitale",
+    type: "image/png",
+    url: "/lovable-uploads/0b1d45f0-c3dd-413d-89aa-6d7a070b4f6d.png",
+    size: 460_000,
+    createdAt: "2024-01-15T07:30:00.000Z",
+    updatedAt: "2024-01-15T07:30:00.000Z",
+    description: "Scène de rue animée à Amman pour illustrer la première journée.",
+    tags: ["amman", "journal", "jour-1"],
+    source: "generated",
+  },
+  {
+    id: "media-journal-day-2-souk",
+    name: "Journal — Jerash et souk",
+    type: "image/png",
+    url: "/lovable-uploads/0b1d45f0-c3dd-413d-89aa-6d7a070b4f6d.png",
+    size: 460_000,
+    createdAt: "2024-01-16T18:45:00.000Z",
+    updatedAt: "2024-01-16T18:45:00.000Z",
+    description: "Ambiance du souk d'Amman après la visite de Jerash.",
+    tags: ["amman", "journal", "jour-2"],
+    source: "generated",
+  },
+  {
+    id: "media-journal-day-3-dead-sea",
+    name: "Journal — Mer Morte",
+    type: "image/png",
+    url: "/lovable-uploads/ab7525ee-de5e-4ec5-bd8a-474c543dff10.png",
+    size: 512_000,
+    createdAt: "2024-01-17T17:15:00.000Z",
+    updatedAt: "2024-01-17T17:15:00.000Z",
+    description: "Reflets dorés au coucher du soleil sur la Mer Morte.",
+    tags: ["mer-morte", "journal", "jour-3"],
+    source: "generated",
+  },
+  {
+    id: "media-place-amman-panorama",
+    name: "Carte — Panorama sur Amman",
+    type: "image/jpeg",
+    url: "/lovable-uploads/ab7525ee-de5e-4ec5-bd8a-474c543dff10.png",
+    size: 480_000,
+    createdAt: "2024-01-15T08:00:00.000Z",
+    updatedAt: "2024-01-15T08:00:00.000Z",
+    description: "Vue générale sur la citadelle d'Amman utilisée dans la carte interactive.",
+    tags: ["amman", "carte", "jour-1"],
+    source: "generated",
+  },
+  {
+    id: "media-place-jerash-card",
+    name: "Carte — Forum de Jerash",
+    type: "image/jpeg",
+    url: "/lovable-uploads/0b1d45f0-c3dd-413d-89aa-6d7a070b4f6d.png",
+    size: 502_000,
+    createdAt: "2024-01-16T09:30:00.000Z",
+    updatedAt: "2024-01-16T09:30:00.000Z",
+    description: "Perspective sur l'ovale de Jerash pour illustrer l'étape 2 de l'itinéraire.",
+    tags: ["jerash", "carte", "jour-2"],
+    source: "generated",
+  },
+  {
+    id: "media-place-ajloun-castle",
+    name: "Carte — Forteresse d'Ajloun",
+    type: "image/jpeg",
+    url: "/lovable-uploads/wadi-rum-sunset.jpg",
+    size: 395_000,
+    createdAt: "2024-01-16T15:45:00.000Z",
+    updatedAt: "2024-01-16T15:45:00.000Z",
+    description: "Vue sur le château d'Ajloun et les collines environnantes.",
+    tags: ["ajloun", "carte", "jour-2"],
+    source: "generated",
+  },
+];
+
+const DEFAULT_ASSET_IDS = new Set(DEFAULT_MEDIA_ASSETS.map((asset) => asset.id));
+
+const coerceTags = (value: unknown): string[] | undefined => {
+  if (!value) {
+    return undefined;
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map((tag) => (typeof tag === "string" ? tag.trim() : ""))
+      .filter((tag) => tag.length > 0);
+  }
+
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter((tag) => tag.length > 0);
+  }
+
+  return undefined;
+};
+
+const normalizeAsset = (asset: Partial<MediaAsset>): MediaAsset | null => {
+  if (!asset || typeof asset.id !== "string" || typeof asset.url !== "string") {
+    return null;
+  }
+
+  const createdAt = typeof asset.createdAt === "string" ? asset.createdAt : new Date().toISOString();
+  const updatedAt = typeof asset.updatedAt === "string" ? asset.updatedAt : createdAt;
+  const size = typeof asset.size === "number" && Number.isFinite(asset.size) ? asset.size : estimateDataUrlSize(asset.url);
+
+  return {
+    id: asset.id,
+    name: typeof asset.name === "string" && asset.name.length > 0 ? asset.name : "Média sans titre",
+    type: typeof asset.type === "string" && asset.type.length > 0 ? asset.type : "image/jpeg",
+    url: asset.url,
+    size,
+    createdAt,
+    updatedAt,
+    width: typeof asset.width === "number" ? asset.width : undefined,
+    height: typeof asset.height === "number" ? asset.height : undefined,
+    originalSize: typeof asset.originalSize === "number" ? asset.originalSize : undefined,
+    lastUsedAt: typeof asset.lastUsedAt === "string" ? asset.lastUsedAt : undefined,
+    checksum: typeof asset.checksum === "string" ? asset.checksum : undefined,
+    source: (asset.source as MediaAssetSource) ?? "upload",
+    description: typeof asset.description === "string" ? asset.description : undefined,
+    tags: coerceTags(asset.tags),
+  };
+};
+
+const safeParse = (value: MediaAsset[] | null): MediaAsset[] => {
   if (!value) {
     return [];
   }
 
-  try {
-    const parsed = JSON.parse(value) as MediaAsset[];
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-
-    return parsed
-      .filter((asset) => asset && typeof asset.id === "string" && typeof asset.url === "string")
-      .map((asset) => ({
-        ...asset,
-        source: asset.source ?? "upload",
-      }));
-  } catch (error) {
-    console.error("❌ Impossible de parser la médiathèque", error);
-    return [];
-  }
+  return value
+    .map((asset) => normalizeAsset(asset) as MediaAsset | null)
+    .filter((asset): asset is MediaAsset => Boolean(asset));
 };
 
 export const estimateDataUrlSize = (dataUrl: string): number => {
@@ -104,61 +290,92 @@ export const formatBytes = (bytes: number): string => {
   return `${value.toFixed(exponent === 0 ? 0 : 1)} ${units[exponent]}`;
 };
 
-export const loadMediaAssets = (): MediaAsset[] => {
-  if (!isBrowser) {
-    return [];
+const mergeWithDefaults = (assets: MediaAsset[]): MediaAsset[] => {
+  const ids = new Set(assets.map((asset) => asset.id));
+  const seeded = DEFAULT_MEDIA_ASSETS.filter((asset) => !ids.has(asset.id)).map((asset) => ({ ...asset }));
+  return [...assets, ...seeded];
+};
+
+const broadcastMediaLibraryChange = (state: MediaLibraryState) => {
+  if (typeof window === "undefined" || typeof window.dispatchEvent !== "function") {
+    return;
   }
 
-  const raw = window.localStorage.getItem(STORAGE_KEY);
-  const assets = safeParse(raw);
+  let event: Event & { detail?: MediaLibraryState };
+  if (typeof window.CustomEvent === "function") {
+    event = new CustomEvent<MediaLibraryState>(MEDIA_LIBRARY_UPDATED_EVENT, { detail: state });
+  } else {
+    event = new Event(MEDIA_LIBRARY_UPDATED_EVENT) as Event & { detail?: MediaLibraryState };
+    Object.defineProperty(event, "detail", { value: state });
+  }
 
-  // Nettoyer les assets invalides ou vides
-  const deduplicated = assets.reduce<MediaAsset[]>((acc, asset) => {
-    if (!asset.id || !asset.url) {
-      return acc;
-    }
+  window.dispatchEvent(event);
+};
 
+const loadStoredAssets = (): MediaAsset[] => {
+  if (!isBrowser || !mediaClient) {
+    return DEFAULT_MEDIA_ASSETS.map((asset) => ({ ...asset }));
+  }
+
+  const raw = mediaClient.read();
+  const parsed = safeParse(raw);
+
+  if (parsed.length === 0) {
+    return DEFAULT_MEDIA_ASSETS.map((asset) => ({ ...asset }));
+  }
+
+  const deduplicated = parsed.reduce<MediaAsset[]>((acc, asset) => {
     if (acc.some((existing) => existing.id === asset.id)) {
       return acc;
     }
 
-    const normalizedAsset: MediaAsset = {
-      ...asset,
-      size: asset.size || estimateDataUrlSize(asset.url),
-      source: asset.source ?? "upload",
-      createdAt: asset.createdAt ?? new Date().toISOString(),
-      updatedAt: asset.updatedAt ?? asset.createdAt ?? new Date().toISOString(),
-    };
-
-    return [...acc, normalizedAsset];
+    return [...acc, asset];
   }, []);
 
-  return deduplicated.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return mergeWithDefaults(
+    deduplicated.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+  );
 };
 
-const persistAssets = (assets: MediaAsset[]) => {
-  if (!isBrowser) {
-    return;
+const persistAssets = (assets: MediaAsset[]): StorageWriteResult | null => {
+  if (!isBrowser || !mediaClient) {
+    return null;
   }
 
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(assets));
+  return mediaClient.write(
+    assets.map((asset) => ({
+      ...asset,
+      tags: asset.tags,
+    })),
+  );
 };
 
-export const saveMediaAssets = (assets: MediaAsset[]): MediaLibraryState => {
-  const ordered = [...assets].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  persistAssets(ordered);
+const toState = (assets: MediaAsset[]): MediaLibraryState => ({
+  assets,
+  usage: computeUsage(assets),
+});
+
+export const loadMediaAssets = (): MediaAsset[] => {
+  return loadStoredAssets();
+};
+
+export const saveMediaAssets = (assets: MediaAsset[]): MediaLibraryPersistenceResult => {
+  const ordered = assets
+    .map((asset) => ({ ...asset }))
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  const state = toState(ordered);
+  const writeResult = persistAssets(ordered);
+  broadcastMediaLibraryChange(state);
   return {
-    assets: ordered,
-    usage: computeUsage(ordered),
+    state,
+    writeResult,
   };
 };
 
 export const getMediaLibraryState = (): MediaLibraryState => {
-  const assets = loadMediaAssets();
-  return {
-    assets,
-    usage: computeUsage(assets),
-  };
+  const assets = loadStoredAssets();
+  return toState(assets);
 };
 
 const createId = () => {
@@ -186,6 +403,8 @@ export interface MediaAssetPayload {
   url: string;
   originalSize?: number;
   source?: MediaAssetSource;
+  description?: string;
+  tags?: string[];
 }
 
 export const buildMediaAsset = async (payload: MediaAssetPayload): Promise<MediaAsset> => {
@@ -204,63 +423,92 @@ export const buildMediaAsset = async (payload: MediaAssetPayload): Promise<Media
     height,
     originalSize: payload.originalSize,
     source: payload.source ?? "upload",
+    description: payload.description,
+    tags: payload.tags,
   };
 };
 
-export const addMediaAssets = async (assetsToAdd: MediaAssetPayload[]): Promise<MediaLibraryState> => {
+export const addMediaAssets = async (assetsToAdd: MediaAssetPayload[]): Promise<AddMediaAssetsResult> => {
   if (assetsToAdd.length === 0) {
-    return getMediaLibraryState();
+    const current = loadStoredAssets();
+    return {
+      state: toState(current),
+      writeResult: null,
+      addedCount: 0,
+      skippedCount: 0,
+    };
   }
 
-  const currentAssets = loadMediaAssets();
+  const currentAssets = loadStoredAssets();
   const builtAssets: MediaAsset[] = [];
+  let skippedCount = 0;
 
   for (const payload of assetsToAdd) {
     try {
       const asset = await buildMediaAsset(payload);
       builtAssets.push(asset);
     } catch (error) {
-      console.warn("⚠️ Impossible de créer un média", payload.name, error);
+      skippedCount += 1;
+      logger.warn("⚠️ Impossible de créer un média", { name: payload.name, error });
     }
   }
 
-  const merged = [...builtAssets, ...currentAssets].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  persistAssets(merged);
+  const merged = mergeWithDefaults([...builtAssets, ...currentAssets]).sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
+
+  const state = toState(merged);
+  const writeResult = persistAssets(merged);
+  broadcastMediaLibraryChange(state);
+
   return {
-    assets: merged,
-    usage: computeUsage(merged),
+    state,
+    writeResult,
+    addedCount: builtAssets.length,
+    skippedCount,
   };
 };
 
-export const removeMediaAsset = (assetId: string): MediaLibraryState => {
-  const currentAssets = loadMediaAssets();
+export const removeMediaAsset = (assetId: string): MediaLibraryPersistenceResult => {
+  const currentAssets = loadStoredAssets();
   const filtered = currentAssets.filter((asset) => asset.id !== assetId);
-  persistAssets(filtered);
+  const state = toState(filtered);
+  const writeResult = persistAssets(filtered);
+  broadcastMediaLibraryChange(state);
+
   return {
-    assets: filtered,
-    usage: computeUsage(filtered),
+    state,
+    writeResult,
   };
 };
 
-export const touchMediaAsset = (assetId: string): MediaLibraryState => {
-  const currentAssets = loadMediaAssets();
+export const touchMediaAsset = (assetId: string): MediaLibraryPersistenceResult => {
+  const currentAssets = loadStoredAssets();
   const now = new Date().toISOString();
   const updated = currentAssets.map((asset) => (asset.id === assetId ? { ...asset, lastUsedAt: now, updatedAt: now } : asset));
-  persistAssets(updated);
+  const state = toState(updated);
+  const writeResult = persistAssets(updated);
+  broadcastMediaLibraryChange(state);
+
   return {
-    assets: updated,
-    usage: computeUsage(updated),
+    state,
+    writeResult,
   };
 };
 
-export const refreshAssetPreview = async (assetId: string, options?: { quality?: number; maxWidth?: number; maxHeight?: number }): Promise<MediaLibraryState> => {
-  const currentAssets = loadMediaAssets();
+export const refreshAssetPreview = async (
+  assetId: string,
+  options?: { quality?: number; maxWidth?: number; maxHeight?: number },
+): Promise<MediaLibraryPersistenceResult> => {
+  const currentAssets = loadStoredAssets();
   const target = currentAssets.find((asset) => asset.id === assetId);
 
   if (!target) {
+    const state = toState(currentAssets);
+    broadcastMediaLibraryChange(state);
     return {
-      assets: currentAssets,
-      usage: computeUsage(currentAssets),
+      state,
+      writeResult: null,
     };
   }
 
@@ -279,25 +527,73 @@ export const refreshAssetPreview = async (assetId: string, options?: { quality?:
     };
 
     const updatedAssets = currentAssets.map((asset) => (asset.id === assetId ? updatedAsset : asset));
-    persistAssets(updatedAssets);
+    const state = toState(updatedAssets);
+    const writeResult = persistAssets(updatedAssets);
+    broadcastMediaLibraryChange(state);
 
     return {
-      assets: updatedAssets,
-      usage: computeUsage(updatedAssets),
+      state,
+      writeResult,
     };
   } catch (error) {
-    console.error("❌ Impossible de rafraîchir l'aperçu du média", error);
+    logger.error("❌ Impossible de rafraîchir l'aperçu du média", error);
+    const state = toState(currentAssets);
+    broadcastMediaLibraryChange(state);
     return {
-      assets: currentAssets,
-      usage: computeUsage(currentAssets),
+      state,
+      writeResult: null,
     };
   }
+};
+
+export interface MediaAssetUpdate {
+  name?: string;
+  type?: string;
+  url?: string;
+  description?: string;
+  tags?: string[];
+}
+
+export const updateMediaAsset = (assetId: string, update: MediaAssetUpdate): MediaLibraryPersistenceResult => {
+  const currentAssets = loadStoredAssets();
+  const now = new Date().toISOString();
+
+  const updatedAssets = currentAssets.map((asset) => {
+    if (asset.id !== assetId) {
+      return asset;
+    }
+
+    const nextUrl = update.url ?? asset.url;
+    return {
+      ...asset,
+      name: update.name ?? asset.name,
+      type: update.type ?? asset.type,
+      url: nextUrl,
+      size: update.url ? estimateDataUrlSize(nextUrl) : asset.size,
+      description: update.description ?? asset.description,
+      tags: update.tags ?? asset.tags,
+      updatedAt: now,
+    };
+  });
+
+  const state = toState(updatedAssets);
+  const writeResult = persistAssets(updatedAssets);
+  broadcastMediaLibraryChange(state);
+
+  return {
+    state,
+    writeResult,
+  };
 };
 
 export const clearMediaLibrary = (): void => {
-  if (!isBrowser) {
+  if (!isBrowser || !mediaClient) {
     return;
   }
 
-  window.localStorage.removeItem(STORAGE_KEY);
+  mediaClient.clear();
+  broadcastMediaLibraryChange(toState(DEFAULT_MEDIA_ASSETS.map((asset) => ({ ...asset }))));
 };
+
+export const isDefaultMediaAsset = (assetId: string): boolean => DEFAULT_ASSET_IDS.has(assetId);
+

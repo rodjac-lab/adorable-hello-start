@@ -3,8 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, Pencil } from "lucide-react";
+import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { ContentStatus } from "@/types/content";
 
 interface JournalEntryListProps {
   entries: JournalEntry[];
@@ -12,9 +13,25 @@ interface JournalEntryListProps {
   onCreate: () => void;
   selectedDay?: number | null;
   isLoading?: boolean;
+  getStatus: (day: number) => ContentStatus;
 }
 
-export const JournalEntryList = ({ entries, onSelect, onCreate, selectedDay, isLoading = false }: JournalEntryListProps) => {
+const getBadgeVariant = (status: ContentStatus): "outline" | "default" => {
+  return status === "published" ? "default" : "outline";
+};
+
+const getStatusLabel = (status: ContentStatus): string => {
+  return status === "published" ? "Publié" : "Brouillon";
+};
+
+export const JournalEntryList = ({
+  entries,
+  onSelect,
+  onCreate,
+  selectedDay,
+  isLoading = false,
+  getStatus,
+}: JournalEntryListProps) => {
   return (
     <Card className="shadow-sm h-full">
       <CardHeader className="space-y-2">
@@ -58,9 +75,8 @@ export const JournalEntryList = ({ entries, onSelect, onCreate, selectedDay, isL
                         {entry.date} • {entry.location}
                       </CardDescription>
                     </div>
-                    <Badge variant="outline" className="flex items-center gap-1">
-                      <Pencil className="h-3 w-3" />
-                      Modifier
+                    <Badge variant={getBadgeVariant(getStatus(entry.day))} className="text-xs">
+                      {getStatusLabel(getStatus(entry.day))}
                     </Badge>
                   </div>
                   <p className="mt-3 text-sm text-muted-foreground">
