@@ -7,6 +7,7 @@ import {
   removeMediaAsset,
   subscribeToContentStore,
 } from '@/lib/contentStore';
+import { logger } from '@/lib/logger';
 
 export const useMediaLibrary = () => {
   const [assets, setAssets] = useState<MediaAsset[]>([]);
@@ -19,7 +20,7 @@ export const useMediaLibrary = () => {
       setAssets(data);
       setError(null);
     } catch (err) {
-      console.error('Failed to load media assets', err);
+      logger.error('Erreur lors du chargement de la médiathèque', err);
       setError('Erreur lors du chargement de la médiathèque');
     } finally {
       setIsLoading(false);
@@ -42,7 +43,7 @@ export const useMediaLibrary = () => {
       setAssets(data);
       setError(null);
     } catch (err) {
-      console.error('Failed to reload media assets', err);
+      logger.error('Erreur lors du rechargement de la médiathèque', err);
       setError('Erreur lors du rechargement de la médiathèque');
     } finally {
       setIsLoading(false);
@@ -56,7 +57,7 @@ export const useMediaLibrary = () => {
       setError(null);
       return saved;
     } catch (err) {
-      console.error('Failed to save media asset', err);
+      logger.error('Erreur lors de la sauvegarde du média', err);
       setError('Erreur lors de la sauvegarde du média');
       throw err;
     }
@@ -68,7 +69,7 @@ export const useMediaLibrary = () => {
       setAssets(getMediaAssets());
       setError(null);
     } catch (err) {
-      console.error('Failed to delete media asset', err);
+      logger.error('Erreur lors de la suppression du média', err);
       setError('Erreur lors de la suppression du média');
       throw err;
     }

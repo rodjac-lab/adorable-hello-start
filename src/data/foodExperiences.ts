@@ -1,6 +1,7 @@
 import type { FoodExperience as BaseFoodExperience, ContentStatus } from '@/types/content';
 import { EDITOR_STORAGE_KEYS } from '@/features/editor/constants';
 import { loadPublicationState, resolvePublicationStatus } from '@/features/publishing/publicationState';
+import { logger } from '@/lib/logger';
 
 export type FoodExperience = BaseFoodExperience;
 
@@ -97,7 +98,7 @@ const loadStoredFoodExperiences = (): FoodExperience[] => {
     const parsed = JSON.parse(raw);
     return sanitizeStoredExperiences(parsed);
   } catch (error) {
-    console.warn('⚠️ Impossible de charger les expériences culinaires personnalisées :', error);
+    logger.warn('⚠️ Impossible de charger les expériences culinaires personnalisées', error);
     return [];
   }
 };

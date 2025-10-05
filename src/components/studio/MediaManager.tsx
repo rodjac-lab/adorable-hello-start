@@ -8,6 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 
 interface MediaAsset {
   id: string;
@@ -55,7 +56,7 @@ const loadAssets = (): MediaAsset[] => {
     }
     return parsed;
   } catch (error) {
-    console.warn("Impossible de charger les médias", error);
+    logger.warn("Impossible de charger les médias", error);
     return defaultAssets;
   }
 };

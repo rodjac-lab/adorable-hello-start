@@ -8,6 +8,7 @@ import {
 import type { PersistedJournalEntry } from '@/types/journal';
 import type { JsonLocalStorageClient } from '@/storage/localStorageClient';
 import { JOURNAL_STORAGE_VERSION } from './constants';
+import { logger } from '@/lib/logger';
 
 export const bootstrapJournalStorage = () => {
   initializeContentStore();
@@ -51,17 +52,17 @@ export const recoverEntriesFromBackups = (
 
   const primary = tryRestore('primary');
   if (primary) {
-    console.log('✅ Successfully recovered from backup 1:', primary.length, 'entries');
+    logger.info('✅ Restauration réussie depuis la sauvegarde primaire', { count: primary.length });
     return primary;
   }
 
   const secondary = tryRestore('secondary');
   if (secondary) {
-    console.log('✅ Successfully recovered from backup 2:', secondary.length, 'entries');
+    logger.info('✅ Restauration réussie depuis la sauvegarde secondaire', { count: secondary.length });
     return secondary;
   }
 
-  console.log('📦 Using canonical entries as last resort');
+  logger.info('📦 Utilisation des entrées canoniques comme dernier recours');
   const canonicalEntries = getCanonicalJournalEntries().map(({ source, ...rest }) => rest);
   void client.write(canonicalEntries);
   syncJournalSources(canonicalEntries);

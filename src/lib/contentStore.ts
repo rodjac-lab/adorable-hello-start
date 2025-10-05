@@ -16,11 +16,7 @@ import type {
   FoodExperience as StoreFoodExperience,
   ReadingRecommendation as StoreReadingRecommendation,
 } from '@/store/contentStore';
-import {
-  JOURNAL_STORAGE_KEY,
-  JOURNAL_STORAGE_VERSION,
-  JOURNAL_VERSION_KEY,
-} from '@/lib/journal/constants';
+import { logger } from '@/lib/logger';
 
 export type { ContentSource } from '@/types/content';
 
@@ -90,7 +86,7 @@ const loadSourceState = (): SourceState => {
       hasImported: parsed.hasImported ?? false,
     } as SourceState;
   } catch (error) {
-    console.warn('⚠️ Impossible de charger l\'état des sources:', error);
+    logger.warn('⚠️ Impossible de charger l\'état des sources', error);
     return { ...defaultSourceState };
   }
 };
@@ -136,7 +132,7 @@ export const initializeContentStore = () => {
       localStorage.setItem(JOURNAL_VERSION_KEY, JOURNAL_STORAGE_VERSION);
     }
   } catch (error) {
-    console.error('❌ Erreur lors de l\'initialisation du contentStore:', error);
+    logger.error('❌ Erreur lors de l\'initialisation du contentStore', error);
   }
 };
 

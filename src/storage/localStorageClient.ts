@@ -1,3 +1,5 @@
+import { logger } from '@/lib/logger';
+
 export interface StorageSnapshot {
   main: string | null;
   backup1: string | null;
@@ -105,7 +107,7 @@ export const createJsonLocalStorageClient = <TValue>(
     try {
       return JSON.parse(raw) as TValue;
     } catch (error) {
-      console.error('❌ Failed to parse stored data:', error);
+      logger.error('❌ Échec du parsing des données stockées', error);
       return null;
     }
   };
@@ -134,7 +136,7 @@ export const createJsonLocalStorageClient = <TValue>(
     try {
       return JSON.parse(backup) as TValue;
     } catch (error) {
-      console.error('❌ Failed to parse backup payload:', error);
+      logger.error('❌ Échec du parsing des données de sauvegarde', error);
       return null;
     }
   };

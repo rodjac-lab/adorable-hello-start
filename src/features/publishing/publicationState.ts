@@ -1,4 +1,5 @@
 import type { ContentStatus } from "@/types/content";
+import { logger } from "@/lib/logger";
 
 export type PublicationCollection = "journal" | "food" | "books";
 
@@ -90,7 +91,7 @@ export const loadPublicationState = (): PublicationState => {
       books: normalizeCollection(parsed.books),
     };
   } catch (error) {
-    console.warn("⚠️ Impossible de lire l'état de publication :", error);
+    logger.warn("⚠️ Impossible de lire l'état de publication", error);
     return createDefaultState();
   }
 };
@@ -103,7 +104,7 @@ export const savePublicationState = (state: PublicationState): void => {
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch (error) {
-    console.error("❌ Impossible d'enregistrer l'état de publication :", error);
+    logger.error("❌ Impossible d'enregistrer l'état de publication", error);
   }
 };
 

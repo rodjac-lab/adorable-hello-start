@@ -2,6 +2,7 @@ import type { PersistedJournalEntry } from '@/types/journal';
 import type { ContentStatus } from '@/types/content';
 import { EDITOR_STORAGE_KEYS } from '@/features/editor/constants';
 import { loadPublicationState, resolvePublicationStatus } from '@/features/publishing/publicationState';
+import { logger } from '@/lib/logger';
 
 export type JournalEntry = PersistedJournalEntry;
 
@@ -89,7 +90,7 @@ const loadStoredJournalEntries = (): JournalEntry[] => {
     const parsed = JSON.parse(raw);
     return sanitizeStoredEntries(parsed);
   } catch (error) {
-    console.warn('⚠️ Impossible de charger les entrées personnalisées du journal :', error);
+    logger.warn('⚠️ Impossible de charger les entrées personnalisées du journal', error);
     return [];
   }
 };

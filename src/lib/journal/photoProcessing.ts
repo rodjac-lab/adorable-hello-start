@@ -1,5 +1,6 @@
 import { compressImageUrl } from '@/lib/imageCompression';
 import type { PersistedJournalEntry } from '@/types/journal';
+import { logger } from '@/lib/logger';
 
 const readBlobAsDataUrl = (blob: Blob): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -26,7 +27,7 @@ const compressIfNeeded = async (base64: string): Promise<string> => {
       format: 'jpeg',
     });
   } catch (error) {
-    console.warn('⚠️ Could not compress existing base64:', error);
+    logger.warn('⚠️ Impossible de compresser le contenu base64 existant', error);
     return base64;
   }
 };
@@ -39,7 +40,7 @@ const normalizePhoto = async (photo: string): Promise<string | null> => {
       const base64 = await readBlobAsDataUrl(blob);
       return compressIfNeeded(base64);
     } catch (error) {
-      console.warn('⚠️ Failed to convert blob to base64:', photo, error);
+      logger.warn('⚠️ Conversion blob → base64 impossible', { photo, error });
       return null;
     }
   }
@@ -52,7 +53,7 @@ const normalizePhoto = async (photo: string): Promise<string | null> => {
     return photo;
   }
 
-  console.warn('⚠️ Unknown photo format:', photo);
+  logger.warn('⚠️ Format de photo inconnu', { photo });
   return null;
 };
 
@@ -69,7 +70,10 @@ export const normalizePhotosForPersistence = async (
       const validPhotos = processedPhotos.filter((photo): photo is string => Boolean(photo));
 
       if (validPhotos.length !== entry.photos.length) {
-        console.warn(`⚠️ Removed ${entry.photos.length - validPhotos.length} invalid photos from day ${entry.day}`);
+        logger.warn('⚠️ Photos invalides supprimées lors de la normalisation', {
+          day: entry.day,
+          removed: entry.photos.length - validPhotos.length,
+        });
       }
 
       return {

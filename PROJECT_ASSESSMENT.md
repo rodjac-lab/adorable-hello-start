@@ -89,6 +89,7 @@ Consolider l'architecture afin de rendre la création de contenu stable, typée 
 - ✅ Harmonisation de l'UX : toasts de sauvegarde/export, indicateurs d'état et verrouillage des actions tant que les contenus ne sont pas synchronisés.
 - ✅ Préparation du workflow de publication avec `usePublicationState` et les contrôles `PublicationStatusControls` partagés.
 - 🔜 Brancher ce workflow côté Studio (actions Publier/Brouillon, diagnostics unifiés) avant de clôturer l'étape.
+- ✅ Branchement complet du workflow de publication dans le Studio : statut par entrée, récapitulatif des brouillons et synchronisation automatique des jeux de données.
 
 ## Étape 4 — Nettoyage des stores de contenu (en cours)
 - ✅ Déplacement des contenus canoniques (journal, gastronomie, lectures, cartes) dans `src/data/` avec types partagés (`src/types/content.ts`).
@@ -96,3 +97,10 @@ Consolider l'architecture afin de rendre la création de contenu stable, typée 
 - ✅ Rafraîchissement des pages publiques (Food & Recommendations) et du Studio pour consommer les nouvelles données typées.
 - ✅ Introduction des statuts de publication (draft/published) persistés dans `localStorage` et filtrage des pages publiques via les sélecteurs unifiés.
 - 🔜 Aligner le `contentStore` et le Studio sur ce nouvel état (actions de publication, diagnostics) puis documenter le flux complet.
+- ✅ Studio et content store alignés sur les statuts publiés/brouillons avec sauvegarde automatique des collections et diagnostic consolidé.
+
+## Étape 5 — Instrumentation & tests légers (en cours)
+- ✅ Remplacement des journaux `console.*` par le logger centralisé dans les hooks et services critiques (journal, persistance, édition, media, cartes).
+- ✅ Ajout de la journalisation détaillée des opérations de géocodage et de compression pour faciliter le diagnostic.
+- ✅ Couverture Vitest sur les modules critiques (`publicationState`, client `localStorage`, `journalRepository`) et scripts `test`/`ci` prêts pour la CI.
+- ⚠️ Exécution CI bloquée tant que `npm install` ne peut pas récupérer `vitest` (erreur 403 registre) ; compléter les tests `mediaStore`/repositories supplémentaires une fois l'accès rétabli.

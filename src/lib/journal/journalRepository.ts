@@ -27,6 +27,7 @@ import {
   syncJournalSources,
 } from '@/lib/contentStore';
 import type { PersistedJournalEntry } from '@/types/journal';
+import { logger } from '@/lib/logger';
 
 export type JournalEntry = PersistedJournalEntry;
 
@@ -52,11 +53,11 @@ const storageClient = createJsonLocalStorageClient<PersistedJournalEntry[]>({
 const logWriteResult = (result: StorageWriteResult): void => {
   if (!result.success) {
     if (result.quotaExceeded) {
-      console.warn('⚠️ localStorage quota exceeded while saving journal entries');
+      logger.warn('⚠️ Quota localStorage dépassé lors de la sauvegarde des entrées du journal');
     }
 
     if (result.error) {
-      console.error('❌ Error saving journal entries:', result.error);
+      logger.error('❌ Erreur lors de la sauvegarde des entrées du journal', result.error);
     }
   }
 };
@@ -85,13 +86,13 @@ export const saveJournalEntries = async (
   entries: PersistedJournalEntry[],
 ): Promise<boolean> => {
   if (!Array.isArray(entries)) {
-    console.error('❌ Invalid entries format (not array)');
+    logger.error('❌ Format d\'entrées invalide (tableau requis)');
     return false;
   }
 
   const validatedEntries = validatePersistedEntries(entries);
   if (validatedEntries.length === 0) {
-    console.warn('⚠️ No valid entries to save');
+    logger.warn('⚠️ Aucune entrée valide à enregistrer');
     return false;
   }
 
@@ -108,15 +109,15 @@ const parseStoredEntries = (raw: string): PersistedJournalEntry[] | null => {
     }
 
     if (validEntries.length !== parsed.length) {
-      console.warn(
-        `⚠️ Found ${parsed.length - validEntries.length} corrupted entries, using valid ones only`,
-      );
+      logger.warn('⚠️ Entrées corrompues détectées lors de la lecture', {
+        corrupted: parsed.length - validEntries.length,
+      });
       void persistEntries(validEntries, { normalizePhotos: false });
     }
 
     return validEntries;
   } catch (error) {
-    console.error('❌ Invalid data format in localStorage, attempting recovery');
+    logger.error('❌ Format de données invalide dans le localStorage, tentative de récupération', error);
     return null;
   }
 };

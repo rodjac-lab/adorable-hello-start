@@ -1,6 +1,7 @@
 import type { ReadingRecommendation as BaseReadingRecommendation, ContentStatus } from '@/types/content';
 import { EDITOR_STORAGE_KEYS } from '@/features/editor/constants';
 import { loadPublicationState, resolvePublicationStatus } from '@/features/publishing/publicationState';
+import { logger } from '@/lib/logger';
 
 export type BookRecommendation = BaseReadingRecommendation;
 
@@ -117,7 +118,7 @@ const loadStoredReadingRecommendations = (): BookRecommendation[] => {
     const parsed = JSON.parse(raw);
     return sanitizeStoredBooks(parsed);
   } catch (error) {
-    console.warn("⚠️ Impossible de charger les recommandations personnalisées :", error);
+    logger.warn("⚠️ Impossible de charger les recommandations personnalisées", error);
     return [];
   }
 };
