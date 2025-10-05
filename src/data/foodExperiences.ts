@@ -1,41 +1,56 @@
-export interface FoodExperience {
-  id: string;
-  day: number;
-  dish: string;
-  location: string;
-  description: string;
-  rating: number;
-  cultural_note?: string;
-}
+import type { FoodExperience as BaseFoodExperience } from '@/types/content';
+
+export type FoodExperience = BaseFoodExperience;
 
 export const foodExperiences: FoodExperience[] = [
   {
-    id: "1",
-    day: 1,
-    dish: "Mansaf",
-    location: "Restaurant traditionnel, Amman",
-    description: "Le plat national jordanien ! Agneau cuit dans le jameed (yaourt séché fermenté) servi sur lit de riz. Une explosion de saveurs authentiques qui m'a immédiatement transporté au cœur de la culture bédouine.",
+    id: 'mansaf',
+    name: 'Mansaf',
+    type: 'Plat national',
+    description:
+      "Le plat emblématique jordanien : agneau cuit dans une sauce au yaourt fermenté (jameed), servi sur un lit de riz et mangé traditionnellement avec les mains.",
+    experience:
+      "Partagé lors d'un déjeuner familial à Amman. L'expérience était autant sociale que gustative - toute la famille mange dans le même plat, créant une intimité particulière.",
     rating: 5,
-    cultural_note: "Le mansaf se mange traditionnellement avec les mains, debout, en signe de respect. C'est un plat de partage et d'hospitalité."
+    location: 'Restaurant familial, Amman',
+    price: 'Modéré',
   },
   {
-    id: "2",
-    day: 2,
-    dish: "Falafel et Houmous",
-    location: "Souk d'Amman",
-    description: "Petit-déjeuner de rue authentique : falafels croustillants accompagnés d'un houmous onctueux, de tahini et de légumes frais. Servi dans du pain pita chaud, un délice simple mais parfait.",
+    id: 'falafel-houmous',
+    name: 'Falafel et Houmous',
+    type: 'Street food',
+    description:
+      "Boulettes de pois chiches frites servies avec houmous crémeux, tahini, et légumes frais dans du pain pita chaud.",
+    experience:
+      "Découvert dans une petite échoppe près du théâtre romain. Le propriétaire m'a expliqué ses secrets : pois chiches trempés 24h et épices moulues chaque matin.",
     rating: 4,
-    cultural_note: "Le falafel est originaire du Moyen-Orient et chaque pays revendique sa propre version. En Jordanie, ils sont particulièrement épicés !"
+    location: 'Downtown Amman',
+    price: 'Très abordable',
   },
   {
-    id: "3",
-    day: 3,
-    dish: "Kunafa de Nablus",
-    location: "Pâtisserie de Jerash",
-    description: "Dessert traditionnel aux cheveux d'ange, fromage blanc et sirop de fleur d'oranger. Une texture unique entre croquant et fondant, une douceur qui clôture parfaitement un repas copieux.",
+    id: 'knafeh',
+    name: 'Knafeh',
+    type: 'Dessert',
+    description:
+      "Dessert traditionnel au fromage fondu recouvert de cheveux d'ange (kataifi) et arrosé de sirop parfumé à l'eau de rose.",
+    experience:
+      "Une révélation ! La version de Nablus dégustée à Amman était parfaite : croquant du dessus, fondant à l'intérieur. Un équilibre sucré-salé surprenant.",
     rating: 5,
-    cultural_note: "La kunafa est considérée comme la reine des desserts du Levant. Celle de Nablus est réputée être la meilleure !"
-  }
+    location: 'Pâtisserie Al-Aker, Amman',
+    price: 'Abordable',
+  },
+  {
+    id: 'mint-tea-arabic-coffee',
+    name: 'Thé à la menthe et café arabe',
+    type: 'Boissons',
+    description:
+      "Thé noir parfumé à la menthe fraîche et café arabe (qahwa) parfumé à la cardamome, servis dans de petits verres.",
+    experience:
+      "Rituel quotidien dans chaque lieu visité. Le thé accompagne chaque conversation, chaque pause. Le café arabe, plus corsé, ponctue les moments importants.",
+    rating: 4,
+    location: 'Partout',
+    price: 'Très abordable',
+  },
 ];
 
-export const getFoodExperiences = () => foodExperiences;
+export const getFoodExperiences = (): FoodExperience[] => [...foodExperiences];
