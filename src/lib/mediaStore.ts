@@ -1,4 +1,5 @@
 import { compressImageUrl } from "./imageCompression";
+import { logger } from "@/lib/logger";
 
 export type MediaAssetSource = "upload" | "external" | "generated";
 
@@ -61,7 +62,7 @@ const safeParse = (value: string | null): MediaAsset[] => {
         source: asset.source ?? "upload",
       }));
   } catch (error) {
-    console.error("❌ Impossible de parser la médiathèque", error);
+    logger.error("❌ Impossible de parser la médiathèque", error);
     return [];
   }
 };
@@ -220,7 +221,7 @@ export const addMediaAssets = async (assetsToAdd: MediaAssetPayload[]): Promise<
       const asset = await buildMediaAsset(payload);
       builtAssets.push(asset);
     } catch (error) {
-      console.warn("⚠️ Impossible de créer un média", payload.name, error);
+      logger.warn("⚠️ Impossible de créer un média", { name: payload.name, error });
     }
   }
 
@@ -286,7 +287,7 @@ export const refreshAssetPreview = async (assetId: string, options?: { quality?:
       usage: computeUsage(updatedAssets),
     };
   } catch (error) {
-    console.error("❌ Impossible de rafraîchir l'aperçu du média", error);
+    logger.error("❌ Impossible de rafraîchir l'aperçu du média", error);
     return {
       assets: currentAssets,
       usage: computeUsage(currentAssets),

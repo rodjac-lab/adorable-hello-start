@@ -1,8 +1,11 @@
 import { useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { AddJournalEntryFormProps, JournalEntryForm, JournalEntryFormData, JournalEntryPreview, useJournalEntryForm } from "@/components/AddJournalEntryForm";
+import { AddJournalEntryFormProps, JournalEntryForm, JournalEntryPreview, useJournalEntryForm } from "@/components/AddJournalEntryForm";
 import { JournalEntry } from "@/lib/journalStorage";
 import { toast } from "sonner";
+import type { JournalEntryFormData } from "@/types/journal";
+import type { ContentStatus } from "@/types/content";
+import { PublicationStatusControls } from "@/features/editor/components/PublicationStatusControls";
 
 interface EntryFormPanelProps {
   mode: "create" | "edit";
@@ -10,6 +13,8 @@ interface EntryFormPanelProps {
   onSubmit: (values: JournalEntryFormData) => Promise<boolean | void> | boolean | void;
   onCancel?: () => void;
   onSuccess?: (result: JournalEntryFormData) => void;
+  status?: ContentStatus;
+  onStatusChange?: (status: ContentStatus) => void;
 }
 
 const toEditEntry = (entry?: JournalEntry | null): AddJournalEntryFormProps["editEntry"] | undefined => {
@@ -29,7 +34,15 @@ const toEditEntry = (entry?: JournalEntry | null): AddJournalEntryFormProps["edi
   };
 };
 
-export const EntryFormPanel = ({ mode, entry, onSubmit, onCancel, onSuccess }: EntryFormPanelProps) => {
+export const EntryFormPanel = ({
+  mode,
+  entry,
+  onSubmit,
+  onCancel,
+  onSuccess,
+  status,
+  onStatusChange,
+}: EntryFormPanelProps) => {
   const editableEntry = useMemo(() => toEditEntry(mode === "edit" ? entry : undefined), [entry, mode]);
 
   const {
@@ -68,12 +81,25 @@ export const EntryFormPanel = ({ mode, entry, onSubmit, onCancel, onSuccess }: E
   return (
     <Card className="shadow-sm">
       <CardHeader>
-        <CardTitle className="font-serif text-2xl">
-          {mode === "edit" && entry ? `Modifier l'entrée — Jour ${entry.day}` : "Nouvelle entrée"}
-        </CardTitle>
-        <CardDescription>
-          {mode === "edit" ? "Mettez à jour votre récit directement depuis le studio" : "Préparez une nouvelle journée de voyage"}
-        </CardDescription>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <CardTitle className="font-serif text-2xl">
+              {mode === "edit" && entry ? `Modifier l'entrée — Jour ${entry.day}` : "Nouvelle entrée"}
+            </CardTitle>
+            <CardDescription>
+              {mode === "edit"
+                ? "Mettez à jour votre récit directement depuis le studio"
+                : "Préparez une nouvelle journée de voyage"}
+            </CardDescription>
+          </div>
+          {entry && status && onStatusChange && (
+            <PublicationStatusControls
+              status={status}
+              onPublish={() => onStatusChange("published")}
+              onUnpublish={() => onStatusChange("draft")}
+            />
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         <JournalEntryForm

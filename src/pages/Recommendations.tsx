@@ -73,8 +73,9 @@ const BookRecommendationCard = memo(({ book }: { book: BookRecommendation }) => 
       <CardHeader>
         <div className="flex items-center justify-between">
           <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-            {book.category}
+            {book.type}
           </Badge>
+          <span aria-label={`Note ${book.rating} sur 5`}>{"⭐".repeat(book.rating)}</span>
         </div>
         <CardTitle className="text-2xl">{book.title}</CardTitle>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -91,22 +92,22 @@ const BookRecommendationCard = memo(({ book }: { book: BookRecommendation }) => 
               <span className="text-secondary text-lg">💭</span>
               <div>
                 <p className="font-medium text-secondary mb-1">Pourquoi je le recommande</p>
-                <p className="text-sm text-muted-foreground leading-relaxed">{book.why_recommend}</p>
+                <p className="text-sm text-muted-foreground leading-relaxed">{book.why}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {book.amazon_link && (
+        {book.amazon && (
           <Button variant="outline" className="w-full" asChild>
-            <a href={book.amazon_link} target="_blank" rel="noopener noreferrer">
-              📖 Voir sur Amazon
+            <a href={book.amazon} target="_blank" rel="noopener noreferrer">
+              📖 Voir en ligne
             </a>
           </Button>
         )}
       </CardContent>
     </Card>
   );
-}, (prevProps, nextProps) => prevProps.book.title === nextProps.book.title);
+}, (prevProps, nextProps) => prevProps.book.id === nextProps.book.id);
 
 export default Recommendations;

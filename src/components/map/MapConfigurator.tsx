@@ -40,7 +40,7 @@ export const MapConfigurator = () => {
         onProgress: (current, total) => setProgress({ current, total })
       });
     } catch (exception) {
-      console.error('❌ Erreur lors du géocodage:', exception);
+      logger.error('❌ Erreur lors du géocodage:', exception);
     } finally {
       setIsProcessing(false);
     }

@@ -7,6 +7,7 @@ import {
   removeReadingItem,
   subscribeToContentStore,
 } from '@/lib/contentStore';
+import { logger } from '@/lib/logger';
 
 export const useReadingContent = () => {
   const [items, setItems] = useState<ReadingItem[]>([]);
@@ -19,7 +20,7 @@ export const useReadingContent = () => {
       setItems(data);
       setError(null);
     } catch (err) {
-      console.error('Failed to load reading list', err);
+      logger.error('Erreur lors du chargement des lectures', err);
       setError('Erreur lors du chargement des lectures');
     } finally {
       setIsLoading(false);
@@ -42,7 +43,7 @@ export const useReadingContent = () => {
       setItems(data);
       setError(null);
     } catch (err) {
-      console.error('Failed to reload reading list', err);
+      logger.error('Erreur lors du rechargement des lectures', err);
       setError('Erreur lors du rechargement des lectures');
     } finally {
       setIsLoading(false);
@@ -56,7 +57,7 @@ export const useReadingContent = () => {
       setError(null);
       return saved;
     } catch (err) {
-      console.error('Failed to save reading item', err);
+      logger.error('Erreur lors de la sauvegarde d\'une lecture', err);
       setError('Erreur lors de la sauvegarde de la lecture');
       throw err;
     }
@@ -68,7 +69,7 @@ export const useReadingContent = () => {
       setItems(getReadingItems());
       setError(null);
     } catch (err) {
-      console.error('Failed to delete reading item', err);
+      logger.error('Erreur lors de la suppression d\'une lecture', err);
       setError('Erreur lors de la suppression de la lecture');
       throw err;
     }

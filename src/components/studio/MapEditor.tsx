@@ -8,6 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 
 interface MapMarker {
   id: string;
@@ -65,7 +66,7 @@ const loadMapSettings = (): MapSettings => {
       markers: Array.isArray(parsed.markers) ? parsed.markers : [],
     };
   } catch (error) {
-    console.warn("Impossible de charger la configuration de la carte", error);
+    logger.warn("Impossible de charger la configuration de la carte", error);
     return defaultSettings;
   }
 };

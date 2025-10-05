@@ -68,15 +68,16 @@ export function isFoodExperience(value: unknown): value is FoodExperience {
   if (!isObject(value)) return false;
 
   return (
-    isNumber(value.day) &&
-    isNonEmptyString(value.dish) &&
+    (value.id === undefined || typeof value.id === 'string') &&
+    isNonEmptyString(value.name) &&
+    isNonEmptyString(value.type) &&
     isNonEmptyString(value.location) &&
     isNonEmptyString(value.description) &&
+    isNonEmptyString(value.experience) &&
     isNumber(value.rating) &&
     value.rating >= 1 &&
     value.rating <= 5 &&
-    (value.cultural_note === undefined || typeof value.cultural_note === 'string') &&
-    (value.id === undefined || typeof value.id === 'string')
+    isNonEmptyString(value.price)
   );
 }
 
@@ -94,13 +95,16 @@ export function isBookRecommendation(value: unknown): value is BookRecommendatio
   if (!isObject(value)) return false;
 
   return (
+    (value.id === undefined || typeof value.id === 'string') &&
     isNonEmptyString(value.title) &&
     isNonEmptyString(value.author) &&
-    isNonEmptyString(value.category) &&
+    isNonEmptyString(value.type) &&
     isNonEmptyString(value.description) &&
-    isNonEmptyString(value.why_recommend) &&
-    (value.amazon_link === undefined || typeof value.amazon_link === 'string') &&
-    (value.id === undefined || typeof value.id === 'string')
+    isNonEmptyString(value.why) &&
+    typeof value.amazon === 'string' &&
+    isNumber(value.rating) &&
+    value.rating >= 1 &&
+    value.rating <= 5
   );
 }
 
