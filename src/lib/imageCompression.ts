@@ -1,7 +1,8 @@
+import { logger } from '@/lib/logger';
+
 /**
  * Utilitaires de compression d'images pour réduire la taille de stockage
  */
-
 export interface CompressionOptions {
   maxWidth?: number;
   maxHeight?: number;
@@ -50,7 +51,10 @@ export const compressImage = async (
       // Convertir en base64 avec compression
       const compressedDataUrl = canvas.toDataURL(`image/${format}`, quality);
       
-      console.log(`🗜️ Image compressed: ${Math.round(file.size / 1024)}KB → ${Math.round(compressedDataUrl.length * 0.75 / 1024)}KB`);
+      logger.debug('🗜️ Compression d\'image réalisée', {
+        originalSizeKb: Math.round(file.size / 1024),
+        compressedSizeKb: Math.round((compressedDataUrl.length * 0.75) / 1024),
+      });
       
       resolve(compressedDataUrl);
     };
@@ -106,7 +110,10 @@ export const compressImageUrl = async (
       ctx?.drawImage(img, 0, 0, width, height);
       const compressedDataUrl = canvas.toDataURL(`image/${format}`, quality);
       
-      console.log(`🗜️ URL compressed: ${Math.round(imageUrl.length * 0.75 / 1024)}KB → ${Math.round(compressedDataUrl.length * 0.75 / 1024)}KB`);
+      logger.debug('🗜️ Compression d\'image distante réalisée', {
+        originalSizeKb: Math.round((imageUrl.length * 0.75) / 1024),
+        compressedSizeKb: Math.round((compressedDataUrl.length * 0.75) / 1024),
+      });
       
       resolve(compressedDataUrl);
     };

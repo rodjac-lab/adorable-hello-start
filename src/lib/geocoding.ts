@@ -7,6 +7,7 @@ import {
 } from '@/types/map';
 import { mapContentActions } from './contentStore';
 import { getRuntimeMode, RuntimeMode } from '@/utils/environment';
+import { logger } from '@/lib/logger';
 
 const geocodeCache = new Map<string, [number, number]>();
 
@@ -136,7 +137,7 @@ export async function geocodeLocation(
       };
     }
   } catch (error) {
-    console.error(`❌ Erreur de géocodage pour "${locationName}":`, error);
+    logger.error(`❌ Erreur de géocodage pour "${locationName}"`, error);
     throw error;
   }
 

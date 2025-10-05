@@ -7,6 +7,7 @@ import {
   removeMapLocation,
   subscribeToContentStore,
 } from '@/lib/contentStore';
+import { logger } from '@/lib/logger';
 
 export const useMapContent = () => {
   const [locations, setLocations] = useState<MapLocationContent[]>([]);
@@ -19,7 +20,7 @@ export const useMapContent = () => {
       setLocations(data);
       setError(null);
     } catch (err) {
-      console.error('Failed to load map locations', err);
+      logger.error('Erreur lors du chargement des lieux cartographiques', err);
       setError('Erreur lors du chargement des lieux cartographiques');
     } finally {
       setIsLoading(false);
@@ -42,7 +43,7 @@ export const useMapContent = () => {
       setLocations(data);
       setError(null);
     } catch (err) {
-      console.error('Failed to reload map locations', err);
+      logger.error('Erreur lors du rechargement des lieux cartographiques', err);
       setError('Erreur lors du rechargement des lieux cartographiques');
     } finally {
       setIsLoading(false);
@@ -56,7 +57,7 @@ export const useMapContent = () => {
       setError(null);
       return saved;
     } catch (err) {
-      console.error('Failed to save map location', err);
+      logger.error('Erreur lors de la sauvegarde du lieu cartographique', err);
       setError('Erreur lors de la sauvegarde du lieu cartographique');
       throw err;
     }
@@ -68,7 +69,7 @@ export const useMapContent = () => {
       setLocations(getMapLocations());
       setError(null);
     } catch (err) {
-      console.error('Failed to delete map location', err);
+      logger.error('Erreur lors de la suppression du lieu cartographique', err);
       setError('Erreur lors de la suppression du lieu cartographique');
       throw err;
     }

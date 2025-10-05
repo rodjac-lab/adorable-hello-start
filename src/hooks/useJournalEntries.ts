@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-  JournalEntry,
   loadJournalEntries,
   updateJournalEntry,
   addJournalEntry,
@@ -11,6 +10,9 @@ import {
   isCustomJournalDay
 } from '@/lib/contentStore';
 import type { JournalContentEntry } from '@/lib/contentStore';
+import type { JournalEntryFormData } from '@/types/journal';
+import { toPersistedJournalEntry } from '@/lib/journalMapper';
+import { logger } from '@/lib/logger';
 
 // Plus de defaultEntries - tout est maintenant unifié dans le système de persistance
 
@@ -22,19 +24,23 @@ export const useJournalEntries = () => {
   const loadEntriesFromStorage = useCallback((): JournalContentEntry[] => {
     const loaded = loadJournalEntries();
     const withSources = getJournalEntriesWithSource(loaded);
-    console.log('📚 Loaded all entries:', withSources.map(e => `Day ${e.day}: ${e.title} (${e.source})`));
+    logger.debug('📚 Chargement des entrées terminé', withSources.map((entry) => ({
+      day: entry.day,
+      title: entry.title,
+      source: entry.source,
+    })));
     setAllEntries(withSources);
     return withSources;
   }, []);
 
   // Charger les entrées au démarrage avec système unifié
   useEffect(() => {
-    console.log('🚀 Initializing unified journal system...');
+    logger.info('🚀 Initialisation du journal depuis la persistance locale');
     try {
       loadEntriesFromStorage();
       setError(null);
     } catch (err) {
-      console.error('❌ Failed to load entries:', err);
+      logger.error('❌ Échec du chargement des entrées', err);
       setError('Erreur lors du chargement des entrées');
     } finally {
       setIsLoading(false);
@@ -59,31 +65,16 @@ export const useJournalEntries = () => {
   }, [allEntries]);
 
   // Ajouter une nouvelle entrée
-  const addEntry = useCallback(async (formData: any): Promise<boolean> => {
-    console.log('➕ Adding new entry:', formData.title);
+  const addEntry = useCallback(async (formData: JournalEntryFormData): Promise<boolean> => {
+    logger.debug('➕ Ajout d\'une nouvelle entrée', { title: formData.title });
     
     try {
-      const newEntry: JournalEntry = {
-        day: formData.day,
-        date: formData.date.toLocaleDateString('fr-FR', { 
-          day: 'numeric', 
-          month: 'long', 
-          year: 'numeric' 
-        }),
-        title: formData.title,
-        location: formData.location,
-        story: formData.story,
-        mood: formData.mood,
-        photos: formData.photos || [],
-        link: formData.link || undefined,
-      };
-
-      const success = await addJournalEntry(newEntry);
+      const success = await addJournalEntry(toPersistedJournalEntry(formData));
 
       if (success) {
         // Recharger toutes les données depuis le localStorage
         loadEntriesFromStorage();
-        console.log('✅ Entry added successfully');
+        logger.info('✅ Entrée ajoutée avec succès', { title: formData.title });
         setError(null);
         return true;
       } else {
@@ -91,49 +82,34 @@ export const useJournalEntries = () => {
         return false;
       }
     } catch (err) {
-      console.error('❌ Error adding entry:', err);
+      logger.error('❌ Erreur lors de l\'ajout d\'une entrée', err);
       setError('Erreur lors de l\'ajout de l\'entrée');
       return false;
     }
-  }, []);
+  }, [loadEntriesFromStorage]);
 
   // Modifier une entrée existante
-  const editEntry = useCallback(async (formData: any, originalDay: number): Promise<boolean> => {
-    console.log('✏️ Editing entry for day:', originalDay, 'new title:', formData.title);
+  const editEntry = useCallback(async (formData: JournalEntryFormData, originalDay: number): Promise<boolean> => {
+    logger.debug('✏️ Modification d\'une entrée', { day: originalDay, title: formData.title });
     
     try {
-      const updatedEntry: JournalEntry = {
-        day: formData.day,
-        date: formData.date.toLocaleDateString('fr-FR', { 
-          day: 'numeric', 
-          month: 'long', 
-          year: 'numeric' 
-        }),
-        title: formData.title,
-        location: formData.location,
-        story: formData.story,
-        mood: formData.mood,
-        photos: formData.photos || [],
-        link: formData.link || undefined,
-      };
-
-      const success = await updateJournalEntry(updatedEntry);
+      const success = await updateJournalEntry(toPersistedJournalEntry(formData));
 
       // Toujours recharger les données et retourner true pour fermer le formulaire
       loadEntriesFromStorage();
 
       if (success) {
-        console.log('✅ Entry updated successfully');
+        logger.info('✅ Entrée mise à jour', { day: originalDay, title: formData.title });
         setError(null);
       } else {
-        console.warn('⚠️ Save failed but form will close - check quota');
+        logger.warn('⚠️ La sauvegarde a échoué, vérifiez le quota localStorage');
         setError('Sauvegarde échouée: quota localStorage dépassé. Réduisez la taille des photos.');
       }
       
       // Toujours retourner true pour fermer le formulaire
       return true;
     } catch (err) {
-      console.error('❌ Error editing entry:', err);
+      logger.error('❌ Erreur lors de la modification d\'une entrée', err);
       setError('Erreur lors de la modification: ' + (err as Error).message);
 
       // Même en cas d'erreur, on recharge et on ferme le formulaire
@@ -149,13 +125,13 @@ export const useJournalEntries = () => {
 
   // Forcer le rechargement des données
   const reloadEntries = useCallback(() => {
-    console.log('🔄 Manually reloading entries...');
+    logger.debug('🔄 Rechargement manuel des entrées');
     setIsLoading(true);
     try {
       loadEntriesFromStorage();
       setError(null);
     } catch (err) {
-      console.error('❌ Failed to reload entries:', err);
+      logger.error('❌ Échec du rechargement des entrées', err);
       setError('Erreur lors du rechargement des entrées');
     } finally {
       setIsLoading(false);
