@@ -112,4 +112,6 @@ Consolider l'architecture afin de rendre la création de contenu stable, typée 
 - ✅ Nouveau `MediaManager` unifié : import compressé, édition, recompression, indicateurs de quota et toasts.
 - ✅ Hook `useMediaLibrary` pour orchestrer les opérations Studio et surface d'erreurs cohérente.
 - ✅ Tests Vitest pour la persistance média (ordre, normalisation, helpers de taille).
-- 🔜 Rattacher les médias aux contenus (journal/cartes) et exposer les diagnostics de volumétrie dans l'onglet dédié.
+- ✅ Journal et éditeur reliés à la médiathèque : sélection des images dans le Studio, stockage des `mediaAssetIds` et résolution automatique côté site public.
+- ✅ Tableau de bord d'usage dans l'onglet Médiathèque pour suivre les médias référencés et détecter les visuels orphelins.
+- 🔜 Étendre l'association média aux cartes (`placeReferences`) et enrichir les diagnostics de volumétrie côté cartes.

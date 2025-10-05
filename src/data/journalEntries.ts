@@ -3,6 +3,7 @@ import type { ContentStatus } from '@/types/content';
 import { EDITOR_STORAGE_KEYS } from '@/features/editor/constants';
 import { loadPublicationState, resolvePublicationStatus } from '@/features/publishing/publicationState';
 import { logger } from '@/lib/logger';
+import { loadMediaAssets, type MediaAsset } from '@/lib/mediaStore';
 
 export type JournalEntry = PersistedJournalEntry;
 
@@ -18,7 +19,7 @@ export const journalEntries: JournalEntry[] = [
       "Un chauffeur souriant m'attend avec un panneau griffonné à la main : premier sourire, première conversation, première invitation à ralentir et à écouter.",
     ].join('\n\n'),
     mood: 'Excité',
-    photos: ['/lovable-uploads/ab7525ee-de5e-4ec5-bd8a-474c543dff10.png'],
+    mediaAssetIds: ['media-journal-day-1-cover', 'media-journal-day-1-detail'],
     link: 'https://maps.app.goo.gl/2CwZq8vSxcrb3MBv7',
   },
   {
@@ -32,6 +33,7 @@ export const journalEntries: JournalEntry[] = [
       "La journée s'achève à Amman autour d'un mansaf partagé avec la famille de mon hôte : un festin autant culturel que gastronomique.",
     ].join('\n\n'),
     mood: 'Émerveillé',
+    mediaAssetIds: ['media-journal-day-2-souk'],
     link: 'https://maps.app.goo.gl/g3PDc28B4wXCRB4x6',
   },
   {
@@ -45,6 +47,7 @@ export const journalEntries: JournalEntry[] = [
       "Sur le chemin du retour, arrêt dans une coopérative de mosaïstes à Madaba pour admirer un savoir-faire ancestral.",
     ].join('\n\n'),
     mood: 'Apaisé',
+    mediaAssetIds: ['media-journal-day-3-dead-sea'],
   },
 ];
 
@@ -58,6 +61,19 @@ interface GetJournalEntriesOptions {
 }
 
 const canonicalJournalDays = new Set(journalEntries.map((entry) => entry.day.toString()));
+
+const coerceMediaAssetIds = (value: unknown): string[] | undefined => {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const ids = value
+    .filter((item): item is string => typeof item === 'string')
+    .map((id) => id.trim())
+    .filter((id) => id.length > 0);
+
+  return ids.length > 0 ? ids : undefined;
+};
 
 const sanitizeStoredEntries = (raw: unknown): JournalEntry[] => {
   if (!Array.isArray(raw)) {
@@ -73,7 +89,43 @@ const sanitizeStoredEntries = (raw: unknown): JournalEntry[] => {
       const candidate = item as Partial<JournalEntry>;
       return typeof candidate.day === 'number';
     })
-    .map((entry) => ({ ...entry }));
+    .map((entry) => {
+      const candidate = entry as JournalEntry & { mediaAssetIds?: unknown };
+      const mediaAssetIds = coerceMediaAssetIds(candidate.mediaAssetIds);
+      const photos = Array.isArray(candidate.photos)
+        ? candidate.photos.filter((photo): photo is string => typeof photo === 'string' && photo.trim().length > 0)
+        : undefined;
+
+      return {
+        ...entry,
+        mediaAssetIds,
+        photos,
+      };
+    });
+};
+
+const buildAssetMap = (): Map<string, MediaAsset> => {
+  const assets = loadMediaAssets();
+  return new Map(assets.map((asset) => [asset.id, asset]));
+};
+
+const resolveEntryPhotos = (entry: JournalEntry, assets: Map<string, MediaAsset>): JournalEntry => {
+  const mediaAssetIds = entry.mediaAssetIds ?? [];
+
+  const resolvedFromMedia = mediaAssetIds
+    .map((id) => assets.get(id))
+    .filter((asset): asset is MediaAsset => Boolean(asset))
+    .map((asset) => asset.url);
+
+  const legacyPhotos = (entry.photos ?? []).filter((photo) => typeof photo === 'string' && photo.length > 0);
+  const mergedPhotos = [...resolvedFromMedia, ...legacyPhotos];
+  const uniquePhotos = Array.from(new Set(mergedPhotos));
+
+  return {
+    ...entry,
+    mediaAssetIds: mediaAssetIds.length > 0 ? mediaAssetIds : undefined,
+    photos: uniquePhotos.length > 0 ? uniquePhotos : undefined,
+  };
 };
 
 const loadStoredJournalEntries = (): JournalEntry[] => {
@@ -105,12 +157,13 @@ const shouldInclude = (status: ContentStatus, filter: JournalStatusFilter): bool
 
 export const getJournalEntries = (options?: GetJournalEntriesOptions): JournalEntry[] => {
   const filter = options?.status ?? 'published';
+  const assets = buildAssetMap();
 
   if (!isBrowser) {
     if (filter === 'draft') {
       return [];
     }
-    return journalEntries.map((entry) => ({ ...entry }));
+    return journalEntries.map((entry) => resolveEntryPhotos({ ...entry }, assets));
   }
 
   const storedEntries = loadStoredJournalEntries();
@@ -127,7 +180,7 @@ export const getJournalEntries = (options?: GetJournalEntriesOptions): JournalEn
     });
 
     if (shouldInclude(status, filter)) {
-      results.push({ ...candidate });
+      results.push(resolveEntryPhotos({ ...candidate }, assets));
     }
   });
 
@@ -141,7 +194,7 @@ export const getJournalEntries = (options?: GetJournalEntriesOptions): JournalEn
     });
 
     if (shouldInclude(status, filter)) {
-      results.push({ ...entry });
+      results.push(resolveEntryPhotos({ ...entry }, assets));
     }
   });
 

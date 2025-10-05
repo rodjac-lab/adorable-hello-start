@@ -21,29 +21,49 @@ const createLocalStorageMock = (store: LocalStorageRecord) => {
 
 describe("mediaStore", () => {
   let store: LocalStorageRecord;
+  let dispatchEventMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.resetModules();
     store = {};
     const localStorageMock = createLocalStorageMock(store);
 
+    dispatchEventMock = vi.fn();
+
     (globalThis as unknown as { window: Window & typeof globalThis }).window = {
       localStorage: localStorageMock,
       crypto: {
         randomUUID: () => "test-id",
       },
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: dispatchEventMock,
     } as Window & typeof globalThis;
 
     (globalThis as unknown as { localStorage: Storage }).localStorage = localStorageMock;
     (globalThis as unknown as { crypto: Crypto }).crypto = {
       randomUUID: () => "test-id",
     } as Crypto;
+
+    class FakeEvent<T = unknown> {
+      type: string;
+      detail?: T;
+      constructor(type: string, init?: { detail?: T }) {
+        this.type = type;
+        this.detail = init?.detail;
+      }
+    }
+
+    (globalThis as { CustomEvent?: typeof CustomEvent }).CustomEvent = FakeEvent as unknown as typeof CustomEvent;
+    (globalThis as { Event?: typeof Event }).Event = FakeEvent as unknown as typeof Event;
   });
 
   afterEach(() => {
     delete (globalThis as { window?: Window }).window;
     delete (globalThis as { localStorage?: Storage }).localStorage;
     delete (globalThis as { crypto?: Crypto }).crypto;
+    delete (globalThis as { CustomEvent?: typeof CustomEvent }).CustomEvent;
+    delete (globalThis as { Event?: typeof Event }).Event;
   });
 
   it("estimates data URL size and formats bytes", async () => {
@@ -121,5 +141,26 @@ describe("mediaStore", () => {
     expect(target?.tags).toEqual(["portrait", "studio"]);
     expect(target?.updatedAt).not.toBe("2024-02-10T12:00:00.000Z");
   });
-});
 
+  it("broadcasts changes when the library is updated", async () => {
+    const { saveMediaAssets, MEDIA_LIBRARY_UPDATED_EVENT } = await import("../mediaStore");
+
+    saveMediaAssets([
+      {
+        id: "asset-broadcast",
+        name: "Panorama",
+        type: "image/jpeg",
+        url: "data:image/jpeg;base64,GGGGHHHH",
+        size: 800,
+        createdAt: "2024-02-20T12:00:00.000Z",
+        updatedAt: "2024-02-20T12:00:00.000Z",
+        source: "upload",
+      },
+    ]);
+
+    expect(dispatchEventMock).toHaveBeenCalled();
+    const event = dispatchEventMock.mock.calls.at(-1)?.[0] as { type: string; detail?: unknown } | undefined;
+    expect(event?.type).toBe(MEDIA_LIBRARY_UPDATED_EVENT);
+    expect(event?.detail).toMatchObject({ assets: expect.any(Array), usage: expect.any(Object) });
+  });
+});

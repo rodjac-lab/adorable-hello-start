@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,8 @@ import {
   type ImportMediaResult,
 } from "@/hooks/useMediaLibrary";
 import { Loader2, Plus, RefreshCcw, Trash2, Wand2 } from "lucide-react";
+import { getJournalEntries } from "@/data/journalEntries";
+import { logger } from "@/lib/logger";
 
 interface MediaAssetDraft {
   name: string;
@@ -68,6 +70,65 @@ const tagsToString = (tags?: string[]): string => {
   return tags.join(", ");
 };
 
+interface MediaUsageDiagnostics {
+  totalReferences: number;
+  referenced: Array<{
+    asset: MediaAsset;
+    count: number;
+    entries: { day: number; title: string }[];
+  }>;
+  unused: MediaAsset[];
+}
+
+const buildMediaUsageDiagnostics = (assets: MediaAsset[]): MediaUsageDiagnostics => {
+  try {
+    const entries = getJournalEntries({ status: "all" });
+    const usage = new Map<string, { count: number; entries: { day: number; title: string }[] }>();
+
+    entries.forEach((entry) => {
+      (entry.mediaAssetIds ?? []).forEach((assetId) => {
+        const current = usage.get(assetId) ?? { count: 0, entries: [] };
+        current.count += 1;
+        current.entries.push({ day: entry.day, title: entry.title });
+        usage.set(assetId, current);
+      });
+    });
+
+    const referenced = assets
+      .filter((asset) => usage.has(asset.id))
+      .map((asset) => {
+        const metadata = usage.get(asset.id)!;
+        return {
+          asset,
+          count: metadata.count,
+          entries: metadata.entries.sort((a, b) => a.day - b.day),
+        };
+      })
+      .sort((a, b) => {
+        if (b.count !== a.count) {
+          return b.count - a.count;
+        }
+        return a.asset.name.localeCompare(b.asset.name);
+      });
+
+    const unused = assets.filter((asset) => !usage.has(asset.id));
+    const totalReferences = referenced.reduce((acc, item) => acc + item.count, 0);
+
+    return {
+      totalReferences,
+      referenced,
+      unused,
+    };
+  } catch (error) {
+    logger.warn("⚠️ Impossible de calculer l'utilisation de la médiathèque", error);
+    return {
+      totalReferences: 0,
+      referenced: [],
+      unused: assets,
+    };
+  }
+};
+
 export const MediaManager = () => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -83,6 +144,12 @@ export const MediaManager = () => {
     markAssetAsUsed,
     clearError,
   } = useMediaLibrary();
+
+  const [usageDiagnostics, setUsageDiagnostics] = useState<MediaUsageDiagnostics>(() => buildMediaUsageDiagnostics(assets));
+
+  const refreshUsageDiagnostics = useCallback(() => {
+    setUsageDiagnostics(buildMediaUsageDiagnostics(assets));
+  }, [assets]);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<MediaAssetDraft | null>(null);
@@ -125,6 +192,10 @@ export const MediaManager = () => {
 
     toast.error(error);
   }, [error]);
+
+  useEffect(() => {
+    refreshUsageDiagnostics();
+  }, [refreshUsageDiagnostics]);
 
   const handleImportResult = (result: ImportMediaResult) => {
     if (result.imported > 0) {
@@ -306,6 +377,36 @@ export const MediaManager = () => {
             <span className="font-medium">{state.usage.assetCount}</span> / {state.usage.maxAssets} médias • {" "}
             <span className="font-medium">{formatBytes(state.usage.totalBytes)}</span> / {formatBytes(state.usage.maxBytes)}
           </div>
+        </div>
+
+        <div className="rounded-md border border-dashed bg-muted/20 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+            <span>
+              <span className="font-semibold">{usageDiagnostics.totalReferences}</span> référence{usageDiagnostics.totalReferences > 1 ? "s" : ""} dans le contenu
+            </span>
+            <span className="text-muted-foreground">
+              {usageDiagnostics.unused.length} média{usageDiagnostics.unused.length > 1 ? "s" : ""} non utilisé{usageDiagnostics.unused.length > 1 ? "s" : ""}
+            </span>
+          </div>
+          {usageDiagnostics.referenced.length > 0 ? (
+            <ul className="mt-3 space-y-2 text-xs text-muted-foreground">
+              {usageDiagnostics.referenced.slice(0, 3).map(({ asset, count, entries }) => (
+                <li key={asset.id} className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                  <span className="font-medium text-foreground">{asset.name}</span>
+                  <span>
+                    {count} entrée{count > 1 ? "s" : ""} — {entries.map((entry) => `Jour ${entry.day}`).join(", ")}
+                  </span>
+                </li>
+              ))}
+              {usageDiagnostics.referenced.length > 3 && (
+                <li>… et {usageDiagnostics.referenced.length - 3} autre{usageDiagnostics.referenced.length - 3 > 1 ? "s" : ""}</li>
+              )}
+            </ul>
+          ) : (
+            <p className="mt-3 text-xs text-muted-foreground">
+              Aucun média n'est encore relié aux entrées. Associez vos photos depuis l'éditeur pour les voir apparaître ici.
+            </p>
+          )}
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[320px_1fr]">

@@ -5,6 +5,7 @@ export interface PersistedJournalEntry {
   location: string;
   story: string;
   mood: string;
+  mediaAssetIds?: string[];
   photos?: string[];
   link?: string;
 }
@@ -16,6 +17,7 @@ export interface JournalEntryFormData {
   location: string;
   story: string;
   mood: string;
+  mediaAssetIds?: string[];
   photos?: string[];
   link?: string;
 }

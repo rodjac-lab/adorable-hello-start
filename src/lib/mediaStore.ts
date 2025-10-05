@@ -64,6 +64,8 @@ export const DEFAULT_MEDIA_QUOTA: Pick<MediaLibraryUsage, "maxAssets" | "maxByte
   maxBytes: DEFAULT_MAX_BYTES,
 };
 
+export const MEDIA_LIBRARY_UPDATED_EVENT = "media-library:change";
+
 const isBrowser = typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 
 const mediaClient: JsonLocalStorageClient<MediaAsset[]> | null = isBrowser
@@ -101,6 +103,54 @@ const DEFAULT_MEDIA_ASSETS: MediaAsset[] = [
     updatedAt: "2023-12-02T10:00:00.000Z",
     description: "Ambiance sonore enregistrée sur place, parfaite pour enrichir les stories Instagram ou TikTok.",
     tags: ["amman", "souk", "ambiance"],
+    source: "generated",
+  },
+  {
+    id: "media-journal-day-1-cover",
+    name: "Journal — Arrivée à Amman",
+    type: "image/png",
+    url: "/lovable-uploads/ab7525ee-de5e-4ec5-bd8a-474c543dff10.png",
+    size: 512_000,
+    createdAt: "2024-01-15T06:00:00.000Z",
+    updatedAt: "2024-01-15T06:00:00.000Z",
+    description: "Vue sur les toits d'Amman à l'aube, utilisée comme image d'ouverture du journal.",
+    tags: ["amman", "journal", "jour-1"],
+    source: "generated",
+  },
+  {
+    id: "media-journal-day-1-detail",
+    name: "Journal — Détails de la capitale",
+    type: "image/png",
+    url: "/lovable-uploads/0b1d45f0-c3dd-413d-89aa-6d7a070b4f6d.png",
+    size: 460_000,
+    createdAt: "2024-01-15T07:30:00.000Z",
+    updatedAt: "2024-01-15T07:30:00.000Z",
+    description: "Scène de rue animée à Amman pour illustrer la première journée.",
+    tags: ["amman", "journal", "jour-1"],
+    source: "generated",
+  },
+  {
+    id: "media-journal-day-2-souk",
+    name: "Journal — Jerash et souk",
+    type: "image/png",
+    url: "/lovable-uploads/0b1d45f0-c3dd-413d-89aa-6d7a070b4f6d.png",
+    size: 460_000,
+    createdAt: "2024-01-16T18:45:00.000Z",
+    updatedAt: "2024-01-16T18:45:00.000Z",
+    description: "Ambiance du souk d'Amman après la visite de Jerash.",
+    tags: ["amman", "journal", "jour-2"],
+    source: "generated",
+  },
+  {
+    id: "media-journal-day-3-dead-sea",
+    name: "Journal — Mer Morte",
+    type: "image/png",
+    url: "/lovable-uploads/ab7525ee-de5e-4ec5-bd8a-474c543dff10.png",
+    size: 512_000,
+    createdAt: "2024-01-17T17:15:00.000Z",
+    updatedAt: "2024-01-17T17:15:00.000Z",
+    description: "Reflets dorés au coucher du soleil sur la Mer Morte.",
+    tags: ["mer-morte", "journal", "jour-3"],
     source: "generated",
   },
 ];
@@ -210,6 +260,22 @@ const mergeWithDefaults = (assets: MediaAsset[]): MediaAsset[] => {
   return [...assets, ...seeded];
 };
 
+const broadcastMediaLibraryChange = (state: MediaLibraryState) => {
+  if (typeof window === "undefined" || typeof window.dispatchEvent !== "function") {
+    return;
+  }
+
+  let event: Event & { detail?: MediaLibraryState };
+  if (typeof window.CustomEvent === "function") {
+    event = new CustomEvent<MediaLibraryState>(MEDIA_LIBRARY_UPDATED_EVENT, { detail: state });
+  } else {
+    event = new Event(MEDIA_LIBRARY_UPDATED_EVENT) as Event & { detail?: MediaLibraryState };
+    Object.defineProperty(event, "detail", { value: state });
+  }
+
+  window.dispatchEvent(event);
+};
+
 const loadStoredAssets = (): MediaAsset[] => {
   if (!isBrowser || !mediaClient) {
     return DEFAULT_MEDIA_ASSETS.map((asset) => ({ ...asset }));
@@ -262,9 +328,11 @@ export const saveMediaAssets = (assets: MediaAsset[]): MediaLibraryPersistenceRe
     .map((asset) => ({ ...asset }))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
+  const state = toState(ordered);
   const writeResult = persistAssets(ordered);
+  broadcastMediaLibraryChange(state);
   return {
-    state: toState(ordered),
+    state,
     writeResult,
   };
 };
@@ -353,10 +421,12 @@ export const addMediaAssets = async (assetsToAdd: MediaAssetPayload[]): Promise<
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
 
+  const state = toState(merged);
   const writeResult = persistAssets(merged);
+  broadcastMediaLibraryChange(state);
 
   return {
-    state: toState(merged),
+    state,
     writeResult,
     addedCount: builtAssets.length,
     skippedCount,
@@ -366,10 +436,12 @@ export const addMediaAssets = async (assetsToAdd: MediaAssetPayload[]): Promise<
 export const removeMediaAsset = (assetId: string): MediaLibraryPersistenceResult => {
   const currentAssets = loadStoredAssets();
   const filtered = currentAssets.filter((asset) => asset.id !== assetId);
+  const state = toState(filtered);
   const writeResult = persistAssets(filtered);
+  broadcastMediaLibraryChange(state);
 
   return {
-    state: toState(filtered),
+    state,
     writeResult,
   };
 };
@@ -378,10 +450,12 @@ export const touchMediaAsset = (assetId: string): MediaLibraryPersistenceResult 
   const currentAssets = loadStoredAssets();
   const now = new Date().toISOString();
   const updated = currentAssets.map((asset) => (asset.id === assetId ? { ...asset, lastUsedAt: now, updatedAt: now } : asset));
+  const state = toState(updated);
   const writeResult = persistAssets(updated);
+  broadcastMediaLibraryChange(state);
 
   return {
-    state: toState(updated),
+    state,
     writeResult,
   };
 };
@@ -394,8 +468,10 @@ export const refreshAssetPreview = async (
   const target = currentAssets.find((asset) => asset.id === assetId);
 
   if (!target) {
+    const state = toState(currentAssets);
+    broadcastMediaLibraryChange(state);
     return {
-      state: toState(currentAssets),
+      state,
       writeResult: null,
     };
   }
@@ -415,16 +491,20 @@ export const refreshAssetPreview = async (
     };
 
     const updatedAssets = currentAssets.map((asset) => (asset.id === assetId ? updatedAsset : asset));
+    const state = toState(updatedAssets);
     const writeResult = persistAssets(updatedAssets);
+    broadcastMediaLibraryChange(state);
 
     return {
-      state: toState(updatedAssets),
+      state,
       writeResult,
     };
   } catch (error) {
     logger.error("❌ Impossible de rafraîchir l'aperçu du média", error);
+    const state = toState(currentAssets);
+    broadcastMediaLibraryChange(state);
     return {
-      state: toState(currentAssets),
+      state,
       writeResult: null,
     };
   }
@@ -460,10 +540,12 @@ export const updateMediaAsset = (assetId: string, update: MediaAssetUpdate): Med
     };
   });
 
+  const state = toState(updatedAssets);
   const writeResult = persistAssets(updatedAssets);
+  broadcastMediaLibraryChange(state);
 
   return {
-    state: toState(updatedAssets),
+    state,
     writeResult,
   };
 };
@@ -474,6 +556,7 @@ export const clearMediaLibrary = (): void => {
   }
 
   mediaClient.clear();
+  broadcastMediaLibraryChange(toState(DEFAULT_MEDIA_ASSETS.map((asset) => ({ ...asset }))));
 };
 
 export const isDefaultMediaAsset = (assetId: string): boolean => DEFAULT_ASSET_IDS.has(assetId);

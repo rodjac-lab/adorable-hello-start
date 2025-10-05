@@ -14,6 +14,7 @@ export const toPersistedJournalEntry = (data: JournalEntryFormData): PersistedJo
   location: data.location,
   story: data.story,
   mood: data.mood,
+  mediaAssetIds: data.mediaAssetIds && data.mediaAssetIds.length > 0 ? data.mediaAssetIds : undefined,
   photos: data.photos && data.photos.length > 0 ? data.photos : undefined,
   link: data.link?.trim() ? data.link : undefined,
 });

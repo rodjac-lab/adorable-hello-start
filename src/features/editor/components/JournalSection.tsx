@@ -1,3 +1,4 @@
+import { useCallback, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +9,8 @@ import { EntryForm } from "./EntryForm";
 import { GenericListEditor } from "./GenericListEditor";
 import { useEditableCollection } from "../hooks/useEditableCollection";
 import { PublicationStatusControls } from "./PublicationStatusControls";
+import { MediaAssetSelector } from "./MediaAssetSelector";
+import { useMediaLibraryState } from "@/hooks/useMediaLibraryState";
 import type { ContentStatus } from "@/types/content";
 
 interface JournalSectionProps {
@@ -24,6 +27,7 @@ type JournalEntryDraft = {
   location: string;
   story: string;
   mood: string;
+  mediaAssetIds: string[];
 };
 
 const sortByDay = (items: JournalEntry[]): JournalEntry[] =>
@@ -38,30 +42,7 @@ const createDraft = (items: JournalEntry[]): JournalEntryDraft => {
     location: "",
     story: "",
     mood: "",
-  };
-};
-
-const toDraft = (entry: JournalEntry): JournalEntryDraft => ({
-  day: entry.day,
-  date: entry.date,
-  title: entry.title,
-  location: entry.location,
-  story: entry.story,
-  mood: entry.mood,
-});
-
-const fromDraft = (draft: JournalEntryDraft): JournalEntry | null => {
-  if (typeof draft.day !== "number" || Number.isNaN(draft.day)) {
-    return null;
-  }
-
-  return {
-    day: draft.day,
-    date: draft.date.trim(),
-    title: draft.title.trim(),
-    location: draft.location.trim(),
-    story: draft.story.trim(),
-    mood: draft.mood.trim(),
+    mediaAssetIds: [],
   };
 };
 
@@ -97,6 +78,79 @@ const validateDraft = (draft: JournalEntryDraft): string[] => {
 };
 
 export const JournalSection = ({ entries, onChange, getStatus, onStatusChange }: JournalSectionProps) => {
+  const { assets } = useMediaLibraryState();
+  const imageAssetById = useMemo(() => {
+    return assets.filter((asset) => asset.type.startsWith("image/")).reduce<Map<string, typeof assets[number]>>(
+      (map, asset) => {
+        map.set(asset.id, asset);
+        return map;
+      },
+      new Map(),
+    );
+  }, [assets]);
+
+  const assetIdByUrl = useMemo(() => {
+    return Array.from(imageAssetById.values()).reduce<Map<string, string>>((map, asset) => {
+      map.set(asset.url, asset.id);
+      return map;
+    }, new Map());
+  }, [imageAssetById]);
+
+  const toDraft = useCallback(
+    (entry: JournalEntry): JournalEntryDraft => {
+      const existingIds = entry.mediaAssetIds ?? [];
+      if (existingIds.length > 0) {
+        return {
+          day: entry.day,
+          date: entry.date,
+          title: entry.title,
+          location: entry.location,
+          story: entry.story,
+          mood: entry.mood,
+          mediaAssetIds: existingIds,
+        };
+      }
+
+      const inferred = (entry.photos ?? [])
+        .map((photo) => assetIdByUrl.get(photo))
+        .filter((id): id is string => Boolean(id));
+
+      return {
+        day: entry.day,
+        date: entry.date,
+        title: entry.title,
+        location: entry.location,
+        story: entry.story,
+        mood: entry.mood,
+        mediaAssetIds: Array.from(new Set(inferred)),
+      };
+    },
+    [assetIdByUrl],
+  );
+
+  const fromDraft = useCallback(
+    (draft: JournalEntryDraft): JournalEntry | null => {
+      if (typeof draft.day !== "number" || Number.isNaN(draft.day)) {
+        return null;
+      }
+
+      const selectedIds = draft.mediaAssetIds.filter((id) => imageAssetById.has(id));
+      const photos = selectedIds.map((id) => imageAssetById.get(id)?.url).filter((url): url is string => Boolean(url));
+
+      return {
+        day: draft.day,
+        date: draft.date.trim(),
+        title: draft.title.trim(),
+        location: draft.location.trim(),
+        story: draft.story.trim(),
+        mood: draft.mood.trim(),
+        mediaAssetIds: selectedIds.length > 0 ? selectedIds : undefined,
+        photos: photos.length > 0 ? photos : undefined,
+      };
+    },
+    [imageAssetById],
+  );
+
   const editor = useEditableCollection<JournalEntry, number, JournalEntryDraft>({
     items: entries,
     onChange,
@@ -190,6 +244,10 @@ export const JournalSection = ({ entries, onChange, getStatus, onStatusChange }:
                 onChange={(event) => editor.updateDraft({ story: event.target.value })}
               />
             </div>
+            <MediaAssetSelector
+              selectedIds={editor.draft.mediaAssetIds}
+              onChange={(ids) => editor.updateDraft({ mediaAssetIds: ids })}
+            />
           </EntryForm>
         )
       }
@@ -230,6 +288,11 @@ export const JournalSection = ({ entries, onChange, getStatus, onStatusChange }:
               <Badge variant="secondary" className="mt-3">
                 {entry.mood}
               </Badge>
+              {entry.mediaAssetIds && entry.mediaAssetIds.length > 0 && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  📸 {entry.mediaAssetIds.length} média{entry.mediaAssetIds.length > 1 ? "s" : ""} associé{entry.mediaAssetIds.length > 1 ? "s" : ""}
+                </p>
+              )}
             </CardContent>
           </Card>
         );
