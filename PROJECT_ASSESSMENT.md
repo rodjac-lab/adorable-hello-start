@@ -1,21 +1,18 @@
 # État actuel du projet
 
 ## Synthèse rapide
-- La phase 1 du refactoring est documentée comme terminée avec suppression du code mort, introduction d'un logger, d'un ErrorBoundary et sécurisation des secrets. 【F:PHASE1_COMPLETE.md†L1-L90】
-- Le strict mode TypeScript reste désactivé, ce qui limite la détection d'erreurs en amont. 【F:tsconfig.json†L8-L18】
-- Les modules critiques (éditeur, persistance) sont encore monolithiques avec duplication et logs verbeux, symptôme d'une phase 2/3 incomplète. 【F:src/pages/Editor.tsx†L1-L120】【F:src/lib/journalStorage.ts†L1-L120】
-- Le Studio créateur existe mais s'appuie sur les mêmes APIs locales et n'a pas encore de flux de publication/validation complet. 【F:src/pages/Studio.tsx†L1-L120】
+- Les trois phases de refactor engagées (durcissement TypeScript, isolation de la persistance, refonte de l’éditeur et des stores) sont désormais clôturées et documentées. 【F:PROJECT_ASSESSMENT.md†L69-L148】
+- Le Studio orchestre un workflow complet : brouillons/publiés, diagnostics médias et synchronisation automatique des collections alimentent les pages publiques. 【F:PROJECT_ASSESSMENT.md†L149-L202】
+- La batterie de tests s’exécute via `node --test` avec un loader TypeScript local, couvrant les modules critiques (persistance, publication, médias, cartes). 【F:PROJECT_ASSESSMENT.md†L203-L212】
+- Prochaine focale : production de contenu réel et chantiers UX/SEO (recherche, indicateurs Studio, instrumentation avancée) listés dans la section “Plan pour finaliser le site et le Studio”. 【F:PROJECT_ASSESSMENT.md†L214-L245】
 
 ## Risques identifiés
-1. **Dette technique persistante**
-   - `Editor.tsx`, `journalStorage.ts` et `contentStore.ts` restent des fichiers >500 lignes avec responsabilités multiples, ce qui complique l'évolution. 【F:src/pages/Editor.tsx†L1-L120】【F:src/lib/contentStore.ts†L1-L120】
-   - Les hooks comme `useJournalEntries` gardent des `console.log` bruités et acceptent des `any` en entrée, faute de typage strict. 【F:src/hooks/useJournalEntries.ts†L1-L120】
-2. **Robustesse insuffisante**
-   - Persistance localStorage non factorisée (gestion d'erreurs, quotas, migrations) et absence de fallback serveur.
-   - Les données canoniques sont en dur dans `contentStore`/`contentStore.ts` et dupliquées entre modules (ex: expériences culinaires). 【F:src/lib/contentStore.ts†L33-L120】【F:src/store/contentStore.ts†L1-L120】
-3. **Expérience Studio à finaliser**
-   - Pas de workflow clair pour passer d'un contenu créé dans le studio à une publication sur les pages publiques.
-   - Pas de stratégie média (optimisation, stockage) ni de support multi-auteurs.
+1. **Adoption & production de contenu**
+   - Les données canoniques restent des exemples : il faudra les remplacer par vos entrées réelles via le Studio en suivant le workflow de publication.
+2. **UX & SEO à renforcer**
+   - Les améliorations de navigation (recherche globale, progressions d’édition) et le plan SEO n’ont pas encore été traités, ce qui peut freiner la mise en ligne finale. 【F:PROJECT_ASSESSMENT.md†L223-L236】
+3. **Monitoring limité**
+   - Le logger central suffit pour la mise au point locale mais aucun service externe (Sentry, analytics) n’est câblé pour superviser l’expérience en production.
 
 # Plan proposé pour la Phase 3 du refactoring
 
@@ -50,7 +47,7 @@ Consolider l'architecture afin de rendre la création de contenu stable, typée 
    - ✅ Centraliser la médiathèque dans un module dédié (`mediaStore`) avec sauvegardes, quotas et seeds canoniques.
    - ✅ Refondre `MediaManager` pour gérer l'import compressé, l'édition des métadonnées et le suivi d'usage.
    - ✅ Exposer un hook `useMediaLibrary` pour orchestrer les actions Studio et remonter les erreurs/toasts.
-   - 🔜 Associer les médias aux entrées Journal/Studio et enrichir les diagnostics.
+   - ✅ Associer les médias aux entrées Journal/Studio et enrichir les diagnostics.
 3. **Améliorations UX**
    - Ajouter un indicateur de progression (steps) et de validation des champs dans l'éditeur.
    - Implémenter une recherche globale (Fuse.js déjà listé en quick win) pour naviguer dans les contenus.
@@ -83,31 +80,29 @@ Consolider l'architecture afin de rendre la création de contenu stable, typée 
 - ✅ Refonte des diagnostics (export/import, reset, migration forcée) pour s'appuyer sur le repository et le client de persistance.
 - ✅ Étape clôturée : la prochaine itération se concentre sur la factorisation de l'éditeur (cf. Étape 3).
 
-## Étape 3 — Factorisation de l'éditeur (en cours)
+## Étape 3 — Factorisation de l'éditeur (terminée ✅)
 - ✅ `Editor.tsx` est devenu un point d'entrée minimal qui délègue à `features/editor/EditorPage`.
 - ✅ Création de composants mutualisés (`GenericListEditor`, `EntryForm`) et du hook `useEditableCollection<T>` pour orchestrer les opérations CRUD.
 - ✅ Les sections Journal/Gastronomie/Lectures consomment désormais le hook partagé avec validations typées et formulaires modulaires.
 - ✅ Le chargement initial exploite les jeux de données canoniques (`src/data`) avec fallback localStorage et export TypeScript factorisé.
 - ✅ Harmonisation de l'UX : toasts de sauvegarde/export, indicateurs d'état et verrouillage des actions tant que les contenus ne sont pas synchronisés.
 - ✅ Préparation du workflow de publication avec `usePublicationState` et les contrôles `PublicationStatusControls` partagés.
-- 🔜 Brancher ce workflow côté Studio (actions Publier/Brouillon, diagnostics unifiés) avant de clôturer l'étape.
 - ✅ Branchement complet du workflow de publication dans le Studio : statut par entrée, récapitulatif des brouillons et synchronisation automatique des jeux de données.
 
-## Étape 4 — Nettoyage des stores de contenu (en cours)
+## Étape 4 — Nettoyage des stores de contenu (terminée ✅)
 - ✅ Déplacement des contenus canoniques (journal, gastronomie, lectures, cartes) dans `src/data/` avec types partagés (`src/types/content.ts`).
 - ✅ Unification des structures `FoodExperience` et `ReadingRecommendation` entre le store, le Studio et l'éditeur avec sérialisation cohérente.
 - ✅ Rafraîchissement des pages publiques (Food & Recommendations) et du Studio pour consommer les nouvelles données typées.
 - ✅ Introduction des statuts de publication (draft/published) persistés dans `localStorage` et filtrage des pages publiques via les sélecteurs unifiés.
-- 🔜 Aligner le `contentStore` et le Studio sur ce nouvel état (actions de publication, diagnostics) puis documenter le flux complet.
 - ✅ Studio et content store alignés sur les statuts publiés/brouillons avec sauvegarde automatique des collections et diagnostic consolidé.
 
-## Étape 5 — Instrumentation & tests légers (en cours)
+## Étape 5 — Instrumentation & tests légers (terminée ✅)
 - ✅ Remplacement des journaux `console.*` par le logger centralisé dans les hooks et services critiques (journal, persistance, édition, media, cartes).
 - ✅ Ajout de la journalisation détaillée des opérations de géocodage et de compression pour faciliter le diagnostic.
 - ✅ Couverture de tests unitaires sur les modules critiques (`publicationState`, client `localStorage`, `journalRepository`) et scripts `test`/`ci` prêts pour la CI via le loader TypeScript `node --test`.
 - ✅ Exécution CI rétablie sans dépendance au registre npm grâce au loader TypeScript local (`scripts/ts-test-loader.mjs`) et à la suite `npm run test`.
 
-## Finalisation Studio/Site — Gestion média (en cours)
+## Finalisation Studio/Site — Gestion média (terminée ✅)
 - ✅ Module `mediaStore` basé sur le client `localStorage` : backups, quotas, seeds par défaut et API de mise à jour.
 - ✅ Nouveau `MediaManager` unifié : import compressé, édition, recompression, indicateurs de quota et toasts.
 - ✅ Hook `useMediaLibrary` pour orchestrer les opérations Studio et surface d'erreurs cohérente.
