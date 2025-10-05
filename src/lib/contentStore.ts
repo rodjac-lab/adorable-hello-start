@@ -16,6 +16,11 @@ import type {
   FoodExperience as StoreFoodExperience,
   ReadingRecommendation as StoreReadingRecommendation,
 } from '@/store/contentStore';
+import {
+  JOURNAL_STORAGE_KEY,
+  JOURNAL_STORAGE_VERSION,
+  JOURNAL_VERSION_KEY,
+} from '@/lib/journal/constants';
 
 export type { ContentSource } from '@/types/content';
 
