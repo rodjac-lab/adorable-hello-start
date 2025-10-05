@@ -12,14 +12,32 @@ interface LoggerConfig {
   enableErrorReporting: boolean;
 }
 
+const resolveIsDevelopment = (): boolean => {
+  try {
+    const meta = import.meta as { env?: { DEV?: boolean } };
+    if (typeof meta.env?.DEV === 'boolean') {
+      return meta.env.DEV;
+    }
+  } catch (error) {
+    // Ignore access errors when import.meta is unavailable (Node test environment)
+  }
+
+  if (typeof process !== 'undefined' && process.env && 'NODE_ENV' in process.env) {
+    return process.env.NODE_ENV !== 'production';
+  }
+
+  return false;
+};
+
 class Logger {
   private config: LoggerConfig;
 
   constructor() {
+    const isDevelopment = resolveIsDevelopment();
     this.config = {
-      isDevelopment: import.meta.env.DEV,
-      enableDebug: import.meta.env.DEV,
-      enableErrorReporting: !import.meta.env.DEV,
+      isDevelopment,
+      enableDebug: isDevelopment,
+      enableErrorReporting: !isDevelopment,
     };
   }
 

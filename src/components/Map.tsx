@@ -12,6 +12,7 @@ import { JournalEntry } from '@/lib/journalStorage';
 import { LocationValidationModal } from './LocationValidationModal';
 import { useMapContent } from '@/hooks/useMapContent';
 import { MapLocationList } from './MapLocationList';
+import { logger } from '@/lib/logger';
 
 const Map = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -27,17 +28,17 @@ const Map = () => {
   const { entries: mapEntries, isLoading: isContentLoading } = useMapContent();
 
   // DEBUGGING: Logs pour diagnostiquer le problème
-  console.log('🎯 Map component render:', {
+  logger.debug('🎯 Map component render:', {
     allEntriesCount: mapEntries.length,
     mapboxTokenLength: mapboxToken.length,
     showTokenForm,
     isGeocoding
   });
-  console.log('📝 Journal entries in Map:', mapEntries);
+  logger.debug('📝 Journal entries in Map:', mapEntries);
 
   // Test function pour vérifier le géocodage sans API
   const testGeocoding = async () => {
-    console.log('🧪 Starting test geocoding...');
+    logger.debug('🧪 Starting test geocoding...');
     
     // Créer de fausses entrées de journal réalistes pour la Jordanie
     const testEntries: JournalEntry[] = [
@@ -67,68 +68,68 @@ const Map = () => {
       }
     ];
 
-    console.log('🧪 Test entries:', testEntries);
+    logger.debug('🧪 Test entries:', testEntries);
     setIsGeocoding(true);
     
     try {
       const geocodedLocations = await geocodeJournalEntries(testEntries, '', () => {});
-      console.log('🧪 Test geocoded locations:', geocodedLocations);
+      logger.debug('🧪 Test geocoded locations:', geocodedLocations);
       
       if (geocodedLocations.length > 0) {
         setShowValidationModal(true);
         setPendingLocations(geocodedLocations);
       } else {
-        console.error('🧪 No locations geocoded in test');
+        logger.error('🧪 No locations geocoded in test');
       }
     } catch (error) {
-      console.error('🧪 Error in test geocoding:', error);
+      logger.error('🧪 Error in test geocoding:', error);
     } finally {
       setIsGeocoding(false);
     }
   };
 
   const handleGeocode = async () => {
-    console.log('🗺️ Starting geocoding process...');
-    console.log('📍 Token length:', mapboxToken.length);
-    console.log('📚 Journal entries count:', mapEntries.length);
-    console.log('📝 Entries data:', mapEntries.map(e => ({ day: e.day, location: e.location })));
+    logger.debug('🗺️ Starting geocoding process...');
+    logger.debug('📍 Token length:', mapboxToken.length);
+    logger.debug('📚 Journal entries count:', mapEntries.length);
+    logger.debug('📝 Entries data:', mapEntries.map(e => ({ day: e.day, location: e.location })));
 
     // DEBUGGING: Alert visible pour confirmer le démarrage
     alert(`🚀 DEBUT GEOCODAGE: ${mapEntries.length} entrées à traiter`);
     
     if (!mapboxToken.trim()) {
-      console.error('❌ No Mapbox token provided');
+      logger.error('❌ No Mapbox token provided');
       alert('❌ Token Mapbox manquant!');
       return;
     }
     
     if (mapEntries.length === 0) {
-      console.error('❌ No journal entries found');
+      logger.error('❌ No journal entries found');
       alert('❌ Aucune entrée de journal trouvée!');
       return;
     }
     
     setIsGeocoding(true);
     try {
-      console.log('🔄 Calling geocodeJournalEntries...');
+      logger.debug('🔄 Calling geocodeJournalEntries...');
       const locations = await geocodeJournalEntries(mapEntries, mapboxToken);
-      console.log('✅ Geocoding completed, locations found:', locations.length);
-      console.log('📍 Locations:', locations);
+      logger.debug('✅ Geocoding completed, locations found:', locations.length);
+      logger.debug('📍 Locations:', locations);
       
-      console.log('🎯 Geocoding results:', locations);
+      logger.debug('🎯 Geocoding results:', locations);
       
       if (locations.length === 0) {
-        console.warn('⚠️ No locations were geocoded successfully');
+        logger.warn('⚠️ No locations were geocoded successfully');
         alert('Aucun lieu n\'a pu être géocodé. Vérifiez que vos entrées de journal contiennent des noms de lieux valides.');
         setIsGeocoding(false);
         return;
       }
       
-      console.log(`✅ Success! Found ${locations.length} locations to display on map`);
+      logger.debug(`✅ Success! Found ${locations.length} locations to display on map`);
       setPendingLocations(locations);
       setShowValidationModal(true);
     } catch (error) {
-      console.error('❌ Erreur lors du géocodage:', error);
+      logger.error('❌ Erreur lors du géocodage:', error);
       alert(`Erreur lors du géocodage: ${error}`);
     } finally {
       setIsGeocoding(false);
@@ -143,22 +144,22 @@ const Map = () => {
 
   const initializeMap = (locations: MapLocation[] = mapLocations) => {
     if (!mapboxToken.trim()) {
-      console.log('No token provided');
+      logger.debug('No token provided');
       return;
     }
     
-    console.log('Token provided, hiding form and preparing container');
+    logger.debug('Token provided, hiding form and preparing container');
     setShowTokenForm(false);
     
     // Wait for the container to be rendered
     setTimeout(() => {
       if (!mapContainer.current) {
-        console.error('Map container not found after timeout');
+        logger.error('Map container not found after timeout');
         setShowTokenForm(true);
         return;
       }
 
-    console.log('Initializing map with token:', mapboxToken.substring(0, 10) + '...');
+    logger.debug('Initializing map with token:', mapboxToken.substring(0, 10) + '...');
     setShowTokenForm(false); // Hide form immediately when starting initialization
 
     try {
@@ -175,7 +176,7 @@ const Map = () => {
       map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
       map.current.on('load', () => {
-        console.log('Map loaded successfully');
+        logger.debug('Map loaded successfully');
         if (!map.current) return;
 
         // Calculate bounds for all locations
@@ -294,12 +295,12 @@ const Map = () => {
       });
 
       map.current.on('error', (e) => {
-        console.error('Map error:', e);
+        logger.error('Map error:', e);
         setShowTokenForm(true); // Show form again on error
       });
 
     } catch (error) {
-      console.error('Erreur lors de l\'initialisation de la carte:', error);
+      logger.error('Erreur lors de l\'initialisation de la carte:', error);
       setShowTokenForm(true); // Show form again on error
     }
     }, 100); // Wait 100ms for container to be available
